@@ -1,0 +1,11 @@
+# Normalize line endings: store LF in git, checkout platform-native
+* text=auto eol=lf
+
+# Binaries — don't touch
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pkt binary

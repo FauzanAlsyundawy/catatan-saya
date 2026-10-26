@@ -1,0 +1,32 @@
+# Environment and secrets
+.env
+*.env
+
+# Data and Storage
+data/
+uploads/
+*.db
+*.sqlite3
+# Pertahankan placeholder folder
+!data/.gitkeep
+!uploads/.gitkeep
+
+# Python cache & virtual environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/

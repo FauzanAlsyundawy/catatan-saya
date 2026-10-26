@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Log Aktivitas Audit{% endblock %}
+{% block page_heading %}Log Aktivitas Audit{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <p style="color: var(--text-secondary); font-size: 14px;">
+        Pencatatan aktivitas sistem bersifat <em>read-only</em> dan <em>append-only</em> dengan timestamp terverifikasi zona Asia/Jakarta (WIB).
+    </p>
+</div>
+
+<!-- Filters Bar -->
+<div class="filters-row">
+    <form method="GET" action="/audit-log" style="display: flex; gap: 12px; flex-wrap: wrap; width: 100%;">
+        <div style="flex: 1; min-width: 200px;">
+            <select name="activity_type" class="filter-select" style="width: 100%;" onchange="this.form.submit()">
+                <option value="">Semua Jenis Aktivitas</option>
+                <option value="LOGIN_SUCCESS" {% if selected_type == 'LOGIN_SUCCESS' %}selected{% endif %}>Login Berhasil</option>
+                <option value="LOGIN_FAILED" {% if selected_type == 'LOGIN_FAILED' %}selected{% endif %}>Login Gagal</option>
+                <option value="LOGOUT_MANUAL" {% if selected_type == 'LOGOUT_MANUAL' %}selected{% endif %}>Logout Manual</option>
+                <option value="LOGOUT_EXPIRED" {% if selected_type == 'LOGOUT_EXPIRED' %}selected{% endif %}>Sesi Berakhir (Idle Timeout)</option>
+                <option value="UPLOAD_FILE" {% if selected_type == 'UPLOAD_FILE' %}selected{% endif %}>Unggah Berkas</option>
+                <option value="DELETE_FILE" {% if selected_type == 'DELETE_FILE' %}selected{% endif %}>Hapus Berkas</option>
+            </select>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="date" name="start_date" value="{{ start_date or '' }}" class="filter-select" title="Rentang Tanggal Mulai">
+            <span style="color: var(--text-muted); font-size: 12px;">s/d</span>
+            <input type="date" name="end_date" value="{{ end_date or '' }}" class="filter-select" title="Rentang Tanggal Akhir">
+        </div>
+
+        <button type="submit" class="btn btn-secondary btn-sm" style="height: 38px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>Terapkan Filter</span>
+        </button>
+
+        {% if selected_type or start_date or end_date %}
+        <a href="/audit-log" class="btn btn-ghost btn-sm" style="height: 38px;">Reset Filter</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Audit Log Table -->
+<div class="table-card">
+    {% if logs and logs|length > 0 %}
+    <div class="table-responsive">
+        <table class="app-table">
+            <thead>
+                <tr>
+                    <th>Waktu (WIB)</th>
+                    <th>Jenis Aktivitas</th>
+                    <th>Nama Berkas</th>
+                    <th>Kategori</th>
+                    <th>IP Address</th>
+                    <th>User Agent / Keterangan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space: nowrap; font-size: 12px; font-weight: 500; color: var(--text-primary);">
+                        {{ log.timestamp_wib }}
+                    </td>
+                    <td>
+                        {% if log.activity_type == 'LOGIN_SUCCESS' %}
+                        <span class="badge badge-login-success">Login Berhasil</span>
+                        {% elif log.activity_type == 'LOGIN_FAILED' %}
+                        <span class="badge badge-login-failed">Login Gagal</span>
+                        {% elif log.activity_type == 'LOGOUT_MANUAL' %}
+                        <span class="badge badge-logout">Logout</span>
+                        {% elif log.activity_type == 'LOGOUT_EXPIRED' %}
+                        <span class="badge badge-logout">Sesi Berakhir</span>
+                        {% elif log.activity_type == 'UPLOAD_FILE' %}
+                        <span class="badge badge-upload">Unggah Berkas</span>
+                        {% elif log.activity_type == 'DELETE_FILE' %}
+                        <span class="badge badge-delete">Hapus Berkas</span>
+                        {% else %}
+                        <span class="badge">{{ log.activity_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 13px; font-weight: 500; color: var(--text-primary); max-width: 260px; word-break: break-all;">
+                        {{ log.original_filename or '-' }}
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-secondary);">
+                        {{ log.category_name or '-' }}
+                    </td>
+                    <td style="font-size: 12px; font-family: monospace; color: var(--text-secondary);">
+                        {{ log.ip_address or '-' }}
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ log.details or log.user_agent }}">
+                        {{ log.details or log.user_agent or '-' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Menampilkan halaman {{ current_page }} dari {{ total_pages }} (Total {{ total_count }} log)
+        </div>
+        <div class="pagination-nav">
+            {% if current_page > 1 %}
+            <a href="?page={{ current_page - 1 }}&activity_type={{ selected_type or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}" class="btn btn-secondary btn-sm">
+                &larr; Sebelumnya
+            </a>
+            {% endif %}
+
+            {% if current_page < total_pages %}
+            <a href="?page={{ current_page + 1 }}&activity_type={{ selected_type or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}" class="btn btn-secondary btn-sm">
+                Selanjutnya &rarr;
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <div class="empty-title">Tidak Ada Entri Log Aktivitas</div>
+        <div class="empty-subtitle">Belum ada aktivitas yang sesuai dengan kriteria filter pencarian Anda.</div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

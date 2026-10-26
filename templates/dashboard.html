@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Beranda{% endblock %}
+{% block page_heading %}Penyimpanan Catatan{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <p style="color: var(--text-secondary); font-size: 14px;">
+        Pilih kategori catatan untuk mengelola berkas, mengunggah dokumen baru, atau mengunduh arsip.
+    </p>
+</div>
+
+<!-- Bento Grid 5 Kategori Tetap -->
+<div class="bento-grid">
+    {% for cat in categories %}
+    <a href="/category/{{ cat.slug }}" class="bento-card {% if loop.index == 1 %}bento-card-large{% elif loop.index == 2 %}bento-card-medium{% else %}bento-card-third{% endif %}">
+        <div>
+            <div class="bento-top-row">
+                <div class="bento-icon-wrapper">
+                    {% if cat.slug == 'word' %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                    {% elif cat.slug == 'excel' %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>
+                    {% elif cat.slug == 'notepadpp' %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    {% elif cat.slug == 'cisco' %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="9" y="2" width="6" height="6" rx="1"></rect><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path><path d="M12 12V8"></path></svg>
+                    {% elif cat.slug == 'kuliah' %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                    {% endif %}
+                </div>
+                <div class="bento-arrow-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </div>
+
+            <h2 class="bento-title">{{ cat.name }}</h2>
+            <p class="bento-desc">{{ cat.description }}</p>
+        </div>
+
+        <div class="bento-metrics-row">
+            <div class="bento-metric-item">
+                <span class="bento-metric-val">{{ cat.file_count }}</span>
+                <span class="bento-metric-lbl">Total Berkas</span>
+            </div>
+            <div class="bento-metric-item" style="text-align: right;">
+                <span class="bento-metric-val">{{ cat.total_size_formatted }}</span>
+                <span class="bento-metric-lbl">Ukuran Penyimpanan</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masuk - Catatan Saya</title>
+    <link rel="icon" type="image/png" href="/assets/logo.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="login-viewport">
+        <div class="login-box">
+            <!-- Logo centered with 0.8s smooth fade-in -->
+            <div class="login-logo-container">
+                <img src="/assets/logo.png" alt="Logo" class="login-logo-img">
+            </div>
+
+            <!-- Login Form on the same screen -->
+            <div class="login-card">
+                <div class="login-header-text">
+                    <h1 class="login-title">Catatan Saya</h1>
+                    <p class="login-subtitle">Otentikasi aman untuk mengakses penyimpanan pribadi</p>
+                </div>
+
+                {% if error_message %}
+                <div class="alert-flash" style="background-color: var(--status-danger-bg); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 20px; text-align: left; display: flex; align-items: center; gap: 10px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <span>{{ error_message }}</span>
+                </div>
+                {% endif %}
+
+                <form action="/auth/login" method="POST" autocomplete="off">
+                    <!-- CSRF Token -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="form-group">
+                        <label for="username" class="form-label">Username</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="username" name="username" class="form-input" placeholder="Masukkan username" required autofocus autocomplete="username">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Masukkan password" required autocomplete="current-password" style="padding-right: 42px;">
+                            <button type="button" class="password-toggle-btn" data-target="password" aria-label="Tampilkan password">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary btn-block" style="height: 42px;">
+                            <span>Masuk</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
