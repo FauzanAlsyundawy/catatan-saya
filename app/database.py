@@ -54,7 +54,8 @@ def init_db() -> None:
         columns = [col["name"] for col in cursor.fetchall()]
         if "role" not in columns:
             conn.execute(
-                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin';"
+                "ALTER TABLE users ADD COLUMN role "
+                "TEXT NOT NULL DEFAULT 'admin';"
             )
 
         conn.execute("""
