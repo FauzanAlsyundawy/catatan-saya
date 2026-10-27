@@ -277,7 +277,8 @@ async def test_regular_user_cannot_access_audit_log():
         with get_db() as conn:
             conn.execute("DELETE FROM users WHERE username = ?", (test_user,))
             insert_user_sql = (
-                "INSERT INTO users (username, password_hash, role, created_at) "
+                "INSERT INTO users "
+                "(username, password_hash, role, created_at) "
                 "VALUES (?, ?, 'user', ?)"
             )
             conn.execute(
@@ -301,7 +302,8 @@ async def test_regular_user_cannot_access_audit_log():
         assert login_post.status_code == 302
         assert login_post.headers["location"] == "/"
 
-        # Dashboard accessible, role shown as Pengguna, Log Aktivitas NOT in sidebar
+        # Dashboard accessible, role shown as Pengguna.
+        # Log Aktivitas NOT in sidebar
         dash_res = await client.get("/")
         assert dash_res.status_code == 200
         assert "Log Aktivitas" not in dash_res.text
@@ -315,7 +317,8 @@ async def test_regular_user_cannot_access_audit_log():
         # Verify activity was logged in audit_logs table
         with get_db() as conn:
             cursor = conn.execute(
-                "SELECT activity_type, details FROM audit_logs WHERE details LIKE ?",
+                "SELECT activity_type, details FROM audit_logs "
+                "WHERE details LIKE ?",
                 (f"%{test_user}%",),
             )
             logs = cursor.fetchall()
@@ -378,7 +381,8 @@ async def test_admin_user_management_and_active_session():
 
         with get_db() as conn:
             new_u = conn.execute(
-                "SELECT id, username, role FROM users WHERE username = 'tester_baru'"
+                "SELECT id, username, role FROM users "
+                "WHERE username = 'tester_baru'"
             ).fetchone()
             assert new_u is not None
             assert new_u["role"] == "user"
