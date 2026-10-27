@@ -22,6 +22,9 @@ templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
+LOGIN_TEMPLATE = "login.html"
+
+
 def get_client_ip(request: Request) -> str:
     """Extract real client IP considering forward headers if present."""
     forwarded = request.headers.get("x-forwarded-for")
@@ -41,7 +44,7 @@ async def login_page(request: Request):
     temp_csrf = generate_token(32)
     response = templates.TemplateResponse(
         request=request,
-        name="login.html",
+        name=LOGIN_TEMPLATE,
         context={"csrf_token": temp_csrf, "error_message": None},
     )
     response.set_cookie(
@@ -94,7 +97,7 @@ async def process_login(
         )
         return templates.TemplateResponse(
             request=request,
-            name="login.html",
+            name=LOGIN_TEMPLATE,
             context={"csrf_token": csrf_token, "error_message": lock_msg},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
@@ -122,7 +125,7 @@ async def process_login(
         )
         return templates.TemplateResponse(
             request=request,
-            name="login.html",
+            name=LOGIN_TEMPLATE,
             context={
                 "csrf_token": csrf_token,
                 "error_message": "Username atau password salah",
