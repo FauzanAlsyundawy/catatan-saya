@@ -21,8 +21,13 @@ from app.utils.timezone import format_wib, utc_now_iso
 
 
 @pytest.fixture(autouse=True)
-def setup_test_db():
+def setup_test_db(tmp_path, monkeypatch):
     """Ensure database, tables, and seed users exist for testing."""
+    test_db = tmp_path / "test.db"
+    test_uploads = tmp_path / "uploads"
+    test_uploads.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(settings, "DATABASE_PATH", str(test_db))
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(test_uploads))
     init_db()
     seed_initial_users()
 
