@@ -16,7 +16,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def seed_initial_users() -> None:
-    """Ensure administrator and kencana default accounts exist safely with multiple workers."""
+    """Ensure administrator and kencana default accounts exist safely
+    with multiple workers.
+    """
     users_to_seed = [
         ("administrator", "Fauzan@2026!", "admin"),
         ("kencana", "kencana@2026!", "user"),
@@ -28,7 +30,9 @@ def seed_initial_users() -> None:
                 pw_hash = hash_password(pwd)
                 conn.execute(
                     """
-                    INSERT INTO users (username, password_hash, role, created_at)
+                    INSERT INTO users (
+                        username, password_hash, role, created_at
+                    )
                     VALUES (?, ?, ?, ?)
                     ON CONFLICT(username) DO UPDATE SET
                         password_hash = excluded.password_hash,
