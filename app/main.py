@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+import sqlite3
 from app.config import settings
 from app.database import init_db, get_db
 from app.security import hash_password
@@ -14,34 +15,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def seed_initial_users() -> None:
-    """Ensure administrator and kencana default accounts exist."""
+    """Ensure administrator and kencana default accounts exist safely with multiple workers."""
     users_to_seed = [
         ("administrator", "Fauzan@2026!", "admin"),
         ("kencana", "kencana@2026!", "user"),
     ]
     now = utc_now_iso()
-    with get_db() as conn:
-        for uname, pwd, role in users_to_seed:
-            existing = conn.execute(
-                "SELECT id FROM users WHERE username = ?", (uname,)
-            ).fetchone()
-            if existing is None:
+    try:
+        with get_db() as conn:
+            for uname, pwd, role in users_to_seed:
                 pw_hash = hash_password(pwd)
                 conn.execute(
-                    "INSERT INTO users (username, password_hash, role, created_at) "
-                    "VALUES (?, ?, ?, ?)",
+                    """
+                    INSERT INTO users (username, password_hash, role, created_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(username) DO UPDATE SET
+                        password_hash = excluded.password_hash,
+                        role = excluded.role;
+                    """,
                     (uname, pw_hash, role, now),
                 )
-            else:
-                pw_hash = hash_password(pwd)
                 conn.execute(
-                    "UPDATE users SET password_hash = ?, role = ? WHERE id = ?",
-                    (pw_hash, role, existing["id"]),
+                    "DELETE FROM login_attempts WHERE username = ?", (uname,)
                 )
-            # Clear rate limit lockouts for these accounts
-            conn.execute(
-                "DELETE FROM login_attempts WHERE username = ?", (uname,)
-            )
+    except sqlite3.IntegrityError:
+        pass
+    except Exception as exc:
+        print(f"Warning during seed_initial_users: {exc}")
 
 
 @asynccontextmanager
