@@ -20,6 +20,11 @@ router = APIRouter(prefix="", tags=["Users"])
 templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
+ERR_ACCESS_DENIED = "Akses ditolak"
+ERR_INVALID_CSRF = "CSRF token tidak valid"
+ERR_USER_NOT_FOUND = "Pengguna tidak ditemukan"
+SQL_SELECT_USER_BY_ID = "SELECT id, username FROM users WHERE id = ?"
+
 
 def _check_admin(request: Request) -> dict[str, Any] | None:
     """Verify session and verify user has admin role."""
@@ -50,8 +55,8 @@ async def list_users(request: Request):
 
         # Fetch active sessions
         sessions_rows = conn.execute(
-            "SELECT session_id, user_id, last_active_at, ip_address, user_agent "
-            "FROM sessions"
+            "SELECT session_id, user_id, last_active_at, ip_address, "
+            "user_agent FROM sessions"
         ).fetchall()
 
     # Map user_id to active session info
@@ -122,7 +127,13 @@ async def list_users(request: Request):
     )
 
 
-@router.post("/api/users")
+@router.post(
+    "/api/users",
+    responses={
+        400: {"description": "Data input tidak valid atau username terdaftar"},
+        403: {"description": "Akses ditolak atau token CSRF tidak valid"},
+    },
+)
 async def create_new_user(
     request: Request,
     username: str = Form(...),
@@ -133,10 +144,10 @@ async def create_new_user(
     """Admin API to create a new user account."""
     admin_session = _check_admin(request)
     if not admin_session:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
+        raise HTTPException(status_code=403, detail=ERR_ACCESS_DENIED)
 
     if csrf_token != admin_session["csrf_token"]:
-        raise HTTPException(status_code=403, detail="CSRF token tidak valid")
+        raise HTTPException(status_code=403, detail=ERR_INVALID_CSRF)
 
     clean_user = username.strip()
     if len(clean_user) < 3:
@@ -180,7 +191,10 @@ async def create_new_user(
             category_slug=None,
             ip_address=ip,
             user_agent=ua,
-            details=f"Admin '{admin_session['username']}' membuat akun: '{clean_user}' (role: {clean_role})",
+            details=(
+                f"Admin '{admin_session['username']}' membuat akun: "
+                f"'{clean_user}' (role: {clean_role})"
+            ),
             connection=conn,
         )
 
@@ -193,7 +207,14 @@ async def create_new_user(
     )
 
 
-@router.post("/api/users/{user_id}/reset-password")
+@router.post(
+    "/api/users/{user_id}/reset-password",
+    responses={
+        400: {"description": "Password baru minimal 8 karakter"},
+        403: {"description": "Akses ditolak atau token CSRF tidak valid"},
+        404: {"description": ERR_USER_NOT_FOUND},
+    },
+)
 async def reset_user_password(
     user_id: int,
     request: Request,
@@ -203,10 +224,10 @@ async def reset_user_password(
     """Admin API to reset password for a user."""
     admin_session = _check_admin(request)
     if not admin_session:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
+        raise HTTPException(status_code=403, detail=ERR_ACCESS_DENIED)
 
     if csrf_token != admin_session["csrf_token"]:
-        raise HTTPException(status_code=403, detail="CSRF token tidak valid")
+        raise HTTPException(status_code=403, detail=ERR_INVALID_CSRF)
 
     clean_pass = new_password.strip()
     if len(clean_pass) < 8:
@@ -215,12 +236,10 @@ async def reset_user_password(
         )
 
     with get_db() as conn:
-        user = conn.execute(
-            "SELECT id, username FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        user = conn.execute(SQL_SELECT_USER_BY_ID, (user_id,)).fetchone()
         if not user:
             raise HTTPException(
-                status_code=404, detail="Pengguna tidak ditemukan"
+                status_code=404, detail=ERR_USER_NOT_FOUND
             )
 
         pw_hash = hash_password(clean_pass)
@@ -242,7 +261,10 @@ async def reset_user_password(
             category_slug=None,
             ip_address=ip,
             user_agent=ua,
-            details=f"Admin '{admin_session['username']}' mereset password akun '{user['username']}'",
+            details=(
+                f"Admin '{admin_session['username']}' mereset password "
+                f"akun '{user['username']}'"
+            ),
             connection=conn,
         )
 
@@ -255,7 +277,14 @@ async def reset_user_password(
     )
 
 
-@router.post("/api/users/{user_id}/role")
+@router.post(
+    "/api/users/{user_id}/role",
+    responses={
+        400: {"description": "Role tidak valid atau menurunkan role sendiri"},
+        403: {"description": "Akses ditolak atau token CSRF tidak valid"},
+        404: {"description": ERR_USER_NOT_FOUND},
+    },
+)
 async def change_user_role(
     user_id: int,
     request: Request,
@@ -265,10 +294,10 @@ async def change_user_role(
     """Admin API to change user role."""
     admin_session = _check_admin(request)
     if not admin_session:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
+        raise HTTPException(status_code=403, detail=ERR_ACCESS_DENIED)
 
     if csrf_token != admin_session["csrf_token"]:
-        raise HTTPException(status_code=403, detail="CSRF token tidak valid")
+        raise HTTPException(status_code=403, detail=ERR_INVALID_CSRF)
 
     clean_role = role.strip().lower()
     if clean_role not in ["admin", "user"]:
@@ -286,7 +315,7 @@ async def change_user_role(
         ).fetchone()
         if not user:
             raise HTTPException(
-                status_code=404, detail="Pengguna tidak ditemukan"
+                status_code=404, detail=ERR_USER_NOT_FOUND
             )
 
         conn.execute(
@@ -301,7 +330,10 @@ async def change_user_role(
             category_slug=None,
             ip_address=ip,
             user_agent=ua,
-            details=f"Admin '{admin_session['username']}' mengubah role '{user['username']}' menjadi '{clean_role}'",
+            details=(
+                f"Admin '{admin_session['username']}' mengubah role "
+                f"'{user['username']}' menjadi '{clean_role}'"
+            ),
             connection=conn,
         )
 
@@ -309,12 +341,20 @@ async def change_user_role(
         status_code=200,
         content={
             "success": True,
-            "message": f"Role '{user['username']}' berhasil diubah ke '{clean_role}'",
+            "message": (
+                f"Role '{user['username']}' berhasil diubah ke '{clean_role}'"
+            ),
         },
     )
 
 
-@router.post("/api/users/{user_id}/kick")
+@router.post(
+    "/api/users/{user_id}/kick",
+    responses={
+        403: {"description": "Akses ditolak atau token CSRF tidak valid"},
+        404: {"description": ERR_USER_NOT_FOUND},
+    },
+)
 async def kick_user_session(
     user_id: int,
     request: Request,
@@ -323,18 +363,16 @@ async def kick_user_session(
     """Admin API to kick (force logout) active sessions of a user."""
     admin_session = _check_admin(request)
     if not admin_session:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
+        raise HTTPException(status_code=403, detail=ERR_ACCESS_DENIED)
 
     if csrf_token != admin_session["csrf_token"]:
-        raise HTTPException(status_code=403, detail="CSRF token tidak valid")
+        raise HTTPException(status_code=403, detail=ERR_INVALID_CSRF)
 
     with get_db() as conn:
-        user = conn.execute(
-            "SELECT id, username FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        user = conn.execute(SQL_SELECT_USER_BY_ID, (user_id,)).fetchone()
         if not user:
             raise HTTPException(
-                status_code=404, detail="Pengguna tidak ditemukan"
+                status_code=404, detail=ERR_USER_NOT_FOUND
             )
 
         conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
@@ -347,7 +385,10 @@ async def kick_user_session(
             category_slug=None,
             ip_address=ip,
             user_agent=ua,
-            details=f"Admin '{admin_session['username']}' memutus sesi aktif pengguna '{user['username']}'",
+            details=(
+                f"Admin '{admin_session['username']}' memutus sesi aktif "
+                f"pengguna '{user['username']}'"
+            ),
             connection=conn,
         )
 
@@ -355,12 +396,21 @@ async def kick_user_session(
         status_code=200,
         content={
             "success": True,
-            "message": f"Sesi aktif untuk '{user['username']}' berhasil diputus",
+            "message": (
+                f"Sesi aktif untuk '{user['username']}' berhasil diputus"
+            ),
         },
     )
 
 
-@router.delete("/api/users/{user_id}")
+@router.delete(
+    "/api/users/{user_id}",
+    responses={
+        400: {"description": "Anda tidak dapat menghapus akun Anda sendiri!"},
+        403: {"description": "Akses ditolak atau token CSRF tidak valid"},
+        404: {"description": ERR_USER_NOT_FOUND},
+    },
+)
 async def delete_user(
     user_id: int,
     request: Request,
@@ -368,11 +418,11 @@ async def delete_user(
     """Admin API to delete a user account."""
     admin_session = _check_admin(request)
     if not admin_session:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
+        raise HTTPException(status_code=403, detail=ERR_ACCESS_DENIED)
 
     csrf_header = request.headers.get("X-CSRF-Token")
     if not csrf_header or csrf_header != admin_session["csrf_token"]:
-        raise HTTPException(status_code=403, detail="CSRF token tidak valid")
+        raise HTTPException(status_code=403, detail=ERR_INVALID_CSRF)
 
     if user_id == admin_session["user_id"]:
         raise HTTPException(
@@ -381,12 +431,10 @@ async def delete_user(
         )
 
     with get_db() as conn:
-        user = conn.execute(
-            "SELECT id, username FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        user = conn.execute(SQL_SELECT_USER_BY_ID, (user_id,)).fetchone()
         if not user:
             raise HTTPException(
-                status_code=404, detail="Pengguna tidak ditemukan"
+                status_code=404, detail=ERR_USER_NOT_FOUND
             )
 
         uname = user["username"]
@@ -400,7 +448,10 @@ async def delete_user(
             category_slug=None,
             ip_address=ip,
             user_agent=ua,
-            details=f"Admin '{admin_session['username']}' menghapus akun pengguna '{uname}'",
+            details=(
+                f"Admin '{admin_session['username']}' menghapus akun "
+                f"pengguna '{uname}'"
+            ),
             connection=conn,
         )
 
