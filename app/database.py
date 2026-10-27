@@ -45,9 +45,18 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'admin',
                 created_at TEXT NOT NULL
             );
         """)
+
+        # Migration: ensure 'role' column exists in existing users table
+        cursor = conn.execute("PRAGMA table_info(users);")
+        columns = [col["name"] for col in cursor.fetchall()]
+        if "role" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin';"
+            )
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (

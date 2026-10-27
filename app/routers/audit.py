@@ -62,6 +62,12 @@ async def view_audit_log(
             url="/login", status_code=status.HTTP_302_FOUND
         )
 
+    # Hanya admin yang diizinkan melihat log audit
+    if user_session.get("role") != "admin":
+        return RedirectResponse(
+            url="/", status_code=status.HTTP_302_FOUND
+        )
+
     conditions, params = _build_audit_conditions(
         activity_type, start_date, end_date
     )

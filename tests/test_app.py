@@ -258,3 +258,62 @@ async def test_full_auth_and_file_lifecycle():
 
         after_logout_res = await client.get("/", follow_redirects=False)
         assert after_logout_res.status_code == 302
+
+
+@pytest.mark.asyncio
+async def test_regular_user_cannot_access_audit_log():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        test_user = "test_regular_user"
+        test_pass = "RegularUserPassword2026!"
+        with get_db() as conn:
+            conn.execute(
+                "DELETE FROM users WHERE username = ?", (test_user,)
+            )
+            insert_user_sql = (
+                "INSERT INTO users (username, password_hash, role, created_at) "
+                "VALUES (?, ?, 'user', ?)"
+            )
+            conn.execute(
+                insert_user_sql,
+                (test_user, hash_password(test_pass), utc_now_iso()),
+            )
+
+        login_res = await client.get("/login")
+        temp_csrf = client.cookies.get("temp_csrf_token")
+
+        login_post = await client.post(
+            "/auth/login",
+            data={
+                "username": test_user,
+                "password": test_pass,
+                "csrf_token": temp_csrf,
+            },
+            follow_redirects=False,
+        )
+        assert login_post.status_code == 302
+        assert login_post.headers["location"] == "/"
+
+        # Dashboard accessible, role shown as Pengguna, Log Aktivitas NOT in sidebar
+        dash_res = await client.get("/")
+        assert dash_res.status_code == 200
+        assert "Log Aktivitas" not in dash_res.text
+        assert "Pengguna" in dash_res.text
+
+        # Direct access to /audit-log is blocked and redirected to /
+        audit_res = await client.get("/audit-log", follow_redirects=False)
+        assert audit_res.status_code == 302
+        assert audit_res.headers["location"] == "/"
+
+        # Verify activity was logged in audit_logs table
+        with get_db() as conn:
+            cursor = conn.execute(
+                "SELECT activity_type, details FROM audit_logs WHERE details LIKE ?",
+                (f"%{test_user}%",),
+            )
+            logs = cursor.fetchall()
+            assert len(logs) > 0
+            assert any(r["activity_type"] == "LOGIN_SUCCESS" for r in logs)
+

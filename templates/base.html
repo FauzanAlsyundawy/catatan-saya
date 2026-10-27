@@ -56,16 +56,8 @@
                 </div>
 
                 <div>
-                    <div class="nav-group-title">Sistem & Audit</div>
+                    <div class="nav-group-title">Sistem & Navigasi</div>
                     <ul class="nav-list">
-                        <li>
-                            <a href="/audit-log" class="nav-link {% if active_nav == 'audit' %}active{% endif %}">
-                                <span class="nav-icon">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
-                                </span>
-                                <span>Log Aktivitas</span>
-                            </a>
-                        </li>
                         <li>
                             <a href="/" class="nav-link {% if active_nav == 'dashboard' %}active{% endif %}">
                                 <span class="nav-icon">
@@ -74,6 +66,16 @@
                                 <span>Beranda Bento</span>
                             </a>
                         </li>
+                        {% if current_user and current_user.role == 'admin' %}
+                        <li>
+                            <a href="/audit-log" class="nav-link {% if active_nav == 'audit' %}active{% endif %}">
+                                <span class="nav-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
+                                </span>
+                                <span>Log Aktivitas</span>
+                            </a>
+                        </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
@@ -83,7 +85,7 @@
                     <div class="user-avatar-indicator"></div>
                     <div style="flex:1; overflow:hidden;">
                         <div class="user-name" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{{ current_user.username if current_user else 'Administrator' }}</div>
-                        <div class="user-role">Sesi Terenkripsi</div>
+                        <div class="user-role">{{ 'Administrator' if current_user and current_user.role == 'admin' else 'Pengguna' }}</div>
                     </div>
                 </div>
                 <form action="/auth/logout" method="POST" style="margin: 0;">

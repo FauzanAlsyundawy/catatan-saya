@@ -27,10 +27,18 @@ def main() -> None:
         help="Password admin (opsional, jika ingin non-interaktif)",
         default=None,
     )
+    parser.add_argument(
+        "--role",
+        help="Role pengguna ('admin' atau 'user', default: 'admin')",
+        default="admin",
+        choices=["admin", "user"],
+    )
     args = parser.parse_args()
 
+    role = args.role.strip().lower()
+
     print("=" * 60)
-    print("  CATATAN SAYA - INISIALISASI ADMINISTRATOR (ENTERPRISE)")
+    print("  CATATAN SAYA - INISIALISASI PENGGUNA & ROLE (ENTERPRISE)")
     print("=" * 60)
 
     # Inisialisasi skema DB jika belum ada
@@ -39,7 +47,7 @@ def main() -> None:
     raw_user: Optional[str] = args.username
     if not raw_user:
         try:
-            raw_user = input("Masukkan Username Admin: ").strip()
+            raw_user = input("Masukkan Username: ").strip()
         except (KeyboardInterrupt, EOFError):
             print("\n[!] Dibatalkan oleh pengguna.")
             sys.exit(1)
@@ -52,8 +60,8 @@ def main() -> None:
     raw_pass: Optional[str] = args.password
     if not raw_pass:
         try:
-            input_pass = getpass.getpass("Masukkan Password Admin: ")
-            confirm_pass = getpass.getpass("Konfirmasi Password Admin: ")
+            input_pass = getpass.getpass("Masukkan Password: ")
+            confirm_pass = getpass.getpass("Konfirmasi Password: ")
         except (KeyboardInterrupt, EOFError):
             print("\n[!] Dibatalkan oleh pengguna.")
             sys.exit(1)
@@ -83,20 +91,23 @@ def main() -> None:
         if existing is not None:
             user_id = existing["id"]
             conn.execute(
-                "UPDATE users SET password_hash = ? WHERE id = ?",
-                (pw_hash, user_id),
+                "UPDATE users SET password_hash = ?, role = ? WHERE id = ?",
+                (pw_hash, role, user_id),
             )
             print(
-                f"[OK] Password untuk admin '{username}' "
-                f"berhasil diperbarui."
+                f"[OK] Akun '{username}' berhasil diperbarui "
+                f"dengan role '{role}'."
             )
         else:
             insert_sql = (
-                "INSERT INTO users (username, password_hash, created_at) "
-                "VALUES (?, ?, ?)"
+                "INSERT INTO users (username, password_hash, role, created_at) "
+                "VALUES (?, ?, ?, ?)"
             )
-            conn.execute(insert_sql, (username, pw_hash, now))
-            print(f"[OK] Admin '{username}' berhasil didaftarkan ke sistem.")
+            conn.execute(insert_sql, (username, pw_hash, role, now))
+            print(
+                f"[OK] Pengguna '{username}' (role: {role}) "
+                f"berhasil didaftarkan ke sistem."
+            )
 
     print("=" * 60)
     print("Inisialisasi selesai. Anda dapat menjalankan aplikasi sekarang.")

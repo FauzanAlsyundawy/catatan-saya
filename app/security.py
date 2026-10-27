@@ -130,7 +130,8 @@ def validate_session(session_id: str) -> Optional[dict]:
 
     select_sql = (
         "SELECT s.session_id, s.user_id, s.csrf_token, s.created_at, "
-        "s.last_active_at, s.ip_address, s.user_agent, u.username "
+        "s.last_active_at, s.ip_address, s.user_agent, u.username, "
+        "COALESCE(u.role, 'admin') as role "
         "FROM sessions s JOIN users u ON s.user_id = u.id "
         "WHERE s.session_id = ?"
     )
@@ -169,6 +170,7 @@ def validate_session(session_id: str) -> Optional[dict]:
             "session_id": row["session_id"],
             "user_id": row["user_id"],
             "username": row["username"],
+            "role": row["role"],
             "csrf_token": row["csrf_token"],
             "ip_address": row["ip_address"],
             "user_agent": row["user_agent"],
