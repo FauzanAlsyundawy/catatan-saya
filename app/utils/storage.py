@@ -6,8 +6,8 @@ from pathlib import Path
 def sanitize_filename(name: str) -> str:
     """Sanitize filename against path traversal and forbidden chars."""
     clean = Path(name).name
-    clean = re.sub(r'[\x00-\x1f\x7f]', '', clean)
-    clean = clean.replace('..', '').replace('/', '').replace('\\', '').strip()
+    clean = re.sub(r"[\x00-\x1f\x7f]", "", clean)
+    clean = clean.replace("..", "").replace("/", "").replace("\\", "").strip()
     if not clean:
         clean = "unnamed_file"
     return clean
@@ -41,7 +41,7 @@ def resolve_duplicate_filename(
     stem = path.stem
     ext = path.suffix
 
-    match = re.search(r'^(.*?)\s*\((\d+)\)$', stem)
+    match = re.search(r"^(.*?)\s*\((\d+)\)$", stem)
     if match:
         base_stem = match.group(1).strip()
         start_counter = int(match.group(2)) + 1

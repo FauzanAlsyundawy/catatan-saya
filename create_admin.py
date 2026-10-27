@@ -4,11 +4,11 @@ untuk website Catatan Saya.
 Kredensial di-hash dengan Argon2id dan disimpan di SQLite.
 """
 
-import sys
-import getpass
 import argparse
-from typing import Optional
-from app.database import init_db, get_db
+import getpass
+import sys
+
+from app.database import get_db, init_db
 from app.security import hash_password
 from app.utils.timezone import utc_now_iso
 
@@ -44,7 +44,7 @@ def main() -> None:
     # Inisialisasi skema DB jika belum ada
     init_db()
 
-    raw_user: Optional[str] = args.username
+    raw_user: str | None = args.username
     if not raw_user:
         try:
             raw_user = input("Masukkan Username: ").strip()
@@ -57,7 +57,7 @@ def main() -> None:
         print("[X] Error: Username minimal harus 3 karakter.")
         sys.exit(1)
 
-    raw_pass: Optional[str] = args.password
+    raw_pass: str | None = args.password
     if not raw_pass:
         try:
             input_pass = getpass.getpass("Masukkan Password: ")

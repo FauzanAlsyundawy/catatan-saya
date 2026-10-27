@@ -1,47 +1,46 @@
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
+
 import aiofiles
 from fastapi import (
     APIRouter,
-    Request,
-    UploadFile,
     File,
     Form,
     Header,
     HTTPException,
+    Request,
+    UploadFile,
     status,
 )
 from fastapi.responses import (
-    HTMLResponse,
-    RedirectResponse,
     FileResponse,
+    HTMLResponse,
     JSONResponse,
+    RedirectResponse,
 )
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings, CATEGORY_MAP
+from app.config import CATEGORY_MAP, settings
 from app.database import get_db
 from app.dependencies import (
-    get_current_user_session,
-    verify_csrf,
-    get_nav_categories,
     get_client_ip,
+    get_current_user_session,
+    get_nav_categories,
+    verify_csrf,
 )
 from app.security import log_activity, validate_session
 from app.utils.storage import (
-    sanitize_filename,
-    get_file_extension,
     format_file_size,
-    resolve_duplicate_filename,
     generate_stored_filename,
+    get_file_extension,
     get_file_icon,
+    resolve_duplicate_filename,
+    sanitize_filename,
 )
-from app.utils.timezone import utc_now_iso, format_wib
+from app.utils.timezone import format_wib, utc_now_iso
 
 router = APIRouter(prefix="", tags=["Files"])
-templates_dir = (
-    Path(__file__).resolve().parent.parent.parent / "templates"
-)
+templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
@@ -58,9 +57,7 @@ async def _save_upload_stream(
             if not chunk:
                 break
             chunk_bytes = (
-                chunk.encode("utf-8")
-                if isinstance(chunk, str)
-                else chunk
+                chunk.encode("utf-8") if isinstance(chunk, str) else chunk
             )
             file_size += len(chunk_bytes)
             if file_size > max_bytes:
@@ -71,8 +68,7 @@ async def _save_upload_stream(
                 raise HTTPException(
                     status_code=413,
                     detail=(
-                        f"Ukuran berkas melebihi batas "
-                        f"maksimal {max_mb} MB"
+                        f"Ukuran berkas melebihi batas maksimal {max_mb} MB"
                     ),
                 )
             await f_out.write(chunk_bytes)
@@ -98,9 +94,7 @@ def _save_file_record(
         existing_names = {
             str(row["original_filename"]) for row in cursor.fetchall()
         }
-        final_name = resolve_duplicate_filename(
-            existing_names, original_name
-        )
+        final_name = resolve_duplicate_filename(existing_names, original_name)
 
         now = utc_now_iso()
         insert_sql = (
@@ -151,9 +145,7 @@ async def category_detail(request: Request, slug: str):
 
     clean_slug = slug.strip().lower()
     if clean_slug not in CATEGORY_MAP:
-        raise HTTPException(
-            status_code=404, detail="Kategori tidak ditemukan"
-        )
+        raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
 
     category_info = CATEGORY_MAP[clean_slug]
 
@@ -171,15 +163,17 @@ async def category_detail(request: Request, slug: str):
     for f in db_files:
         size = int(f["file_size"])
         total_size += size
-        files.append({
-            "id": f["id"],
-            "original_filename": f["original_filename"],
-            "file_size": size,
-            "size_formatted": format_file_size(size),
-            "extension": f["extension"],
-            "icon": get_file_icon(str(f["extension"])),
-            "created_at_wib": format_wib(f["created_at"]),
-        })
+        files.append(
+            {
+                "id": f["id"],
+                "original_filename": f["original_filename"],
+                "file_size": size,
+                "size_formatted": format_file_size(size),
+                "extension": f["extension"],
+                "icon": get_file_icon(str(f["extension"])),
+                "created_at_wib": format_wib(f["created_at"]),
+            }
+        )
 
     nav_cats = get_nav_categories()
 
@@ -205,7 +199,7 @@ async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     category_slug: str = Form(...),
-    x_csrf_token: Optional[str] = Header(default=None, alias="X-CSRF-Token"),
+    x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
 ):
     user_session = await get_current_user_session(request)
 
@@ -257,7 +251,7 @@ async def upload_file(
             target_path.unlink()
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal menulis berkas ke penyimpanan: {str(err)}",
+            detail=f"Gagal menulis berkas ke penyimpanan: {err!s}",
         ) from err
 
     try:
@@ -276,7 +270,7 @@ async def upload_file(
             target_path.unlink()
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal mencatat berkas ke database: {str(err)}",
+            detail=f"Gagal mencatat berkas ke database: {err!s}",
         ) from err
 
     return JSONResponse(
@@ -307,9 +301,7 @@ async def download_file(request: Request, file_id: int):
         record = cursor.fetchone()
 
     if record is None:
-        raise HTTPException(
-            status_code=404, detail="Berkas tidak ditemukan"
-        )
+        raise HTTPException(status_code=404, detail="Berkas tidak ditemukan")
 
     file_path = (
         settings.abs_upload_dir / str(record["stored_filename"])
@@ -342,7 +334,7 @@ async def download_file(request: Request, file_id: int):
 async def delete_file(
     request: Request,
     file_id: int,
-    x_csrf_token: Optional[str] = Header(default=None, alias="X-CSRF-Token"),
+    x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
 ):
     user_session = await get_current_user_session(request)
 

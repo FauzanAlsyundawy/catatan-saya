@@ -1,15 +1,16 @@
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI, Request, status
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-import sqlite3
 from app.config import settings
-from app.database import init_db, get_db
+from app.database import get_db, init_db
+from app.routers import audit, auth, dashboard, files, users
 from app.security import hash_password
 from app.utils.timezone import utc_now_iso
-from app.routers import auth, dashboard, files, audit, users
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,7 +41,7 @@ def seed_initial_users() -> None:
                 )
     except sqlite3.IntegrityError:
         pass
-    except Exception as exc:
+    except (sqlite3.Error, OSError) as exc:
         print(f"Warning during seed_initial_users: {exc}")
 
 
@@ -108,9 +109,7 @@ async def unauthorized_handler(request: Request, exc):
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"detail": "Otentikasi diperlukan"},
         )
-    return RedirectResponse(
-        url="/login", status_code=status.HTTP_302_FOUND
-    )
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
 app.include_router(auth.router)

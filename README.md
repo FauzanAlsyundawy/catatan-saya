@@ -88,18 +88,23 @@ NOTE ENTERPRISE/
 ## 4. Instalasi & Setup
 
 ### Langkah 1: Buat Virtual Environment & Pasang Dependensi
+
 Buka terminal di direktori proyek:
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
 *(Untuk Linux/macOS, gunakan `source .venv/bin/activate`)*
 
 ### Langkah 2: Salin File Konfigurasi Lingkungan
+
 ```powershell
 Copy-Item .env.example .env
 ```
+
 Sesuaikan isi `.env` sesuai kebutuhan. Untuk lingkungan pengujian lokal (HTTP), pastikan `SESSION_COOKIE_SECURE=false`. Jika disebarkan di balik reverse proxy HTTPS (Nginx/Caddy), ubah menjadi `SESSION_COOKIE_SECURE=true`.
 
 ---
@@ -107,9 +112,11 @@ Sesuaikan isi `.env` sesuai kebutuhan. Untuk lingkungan pengujian lokal (HTTP), 
 ## 5. Membuat Akun Administrator
 
 Jalankan skrip CLI interaktif untuk membuat username dan password admin pertama kali:
+
 ```powershell
 python create_admin.py
 ```
+
 Masukkan username dan password (minimal 8 karakter). Password akan di-hash menggunakan Argon2id dan disimpan secara aman ke basis data `data/app.db`.
 
 ---
@@ -117,16 +124,19 @@ Masukkan username dan password (minimal 8 karakter). Password akan di-hash mengg
 ## 6. Menjalankan Aplikasi
 
 Jalankan server menggunakan Uvicorn:
+
 ```powershell
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-Buka browser pada: **http://127.0.0.1:8000**
+
+Buka browser pada: **<http://127.0.0.1:8000>**
 
 ---
 
 ## 7. Menjalankan Automated Test Suite
 
 Untuk memverifikasi fungsionalitas, keamanan hashing Argon2id, pembatasan rate limit, header CSP, filter whitelist upload, dan konsistensi log audit:
+
 ```powershell
 python -m pytest -v tests/test_app.py
 ```
@@ -136,15 +146,20 @@ python -m pytest -v tests/test_app.py
 ## 8. Prosedur Pencadangan (Backup) & Pemulihan (Disaster Recovery)
 
 Karena aplikasi menggunakan SQLite dan penyimpanan berkas berbasis file terpisah:
+
 1. **Pencadangan Database:**
    Salin file `data/app.db` saat server berhenti atau gunakan perintah SQLite backup:
+
    ```powershell
    Copy-Item data\app.db backup\app_$(Get-Date -Format 'yyyyMMdd_HHmmss').db
    ```
+
 2. **Pencadangan Berkas Fisik:**
    Arsipkan seluruh isi folder `uploads/`:
+
    ```powershell
    Compress-Archive -Path uploads\* -DestinationPath backup\uploads_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip
    ```
+
 3. **Pemulihan (Restore):**
    Cukup letakkan kembali file `app.db` ke direktori `data/` dan ekstrak berkas fisik ke direktori `uploads/`.

@@ -1,17 +1,18 @@
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from pathlib import Path
-from typing import Optional, Any
-from fastapi import APIRouter, Request, Form, HTTPException, status
+from typing import Any
+
+from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_nav_categories, get_client_ip
+from app.dependencies import get_client_ip, get_nav_categories
 from app.security import (
-    validate_session,
     hash_password,
     log_activity,
+    validate_session,
 )
 from app.utils.timezone import format_wib, parse_utc_iso, utc_now, utc_now_iso
 
@@ -20,7 +21,7 @@ templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
-def _check_admin(request: Request) -> Optional[dict[str, Any]]:
+def _check_admin(request: Request) -> dict[str, Any] | None:
     """Verify session and verify user has admin role."""
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:
@@ -68,7 +69,7 @@ async def list_users(request: Request):
                     "last_active_wib": format_wib(s["last_active_at"]),
                     "minutes_ago": minutes_ago,
                 }
-        except Exception:
+        except (ValueError, TypeError):
             continue
 
     users_list = []
@@ -90,15 +91,17 @@ async def list_users(request: Request):
 
         session_info = active_sessions_map.get(uid)
 
-        users_list.append({
-            "id": uid,
-            "username": u["username"],
-            "role": role,
-            "is_online": is_online,
-            "session": session_info,
-            "created_at_wib": format_wib(u["created_at"]),
-            "is_self": uid == admin_session["user_id"],
-        })
+        users_list.append(
+            {
+                "id": uid,
+                "username": u["username"],
+                "role": role,
+                "is_online": is_online,
+                "session": session_info,
+                "created_at_wib": format_wib(u["created_at"]),
+                "is_self": uid == admin_session["user_id"],
+            }
+        )
 
     nav_categories = get_nav_categories()
 
@@ -137,11 +140,15 @@ async def create_new_user(
 
     clean_user = username.strip()
     if len(clean_user) < 3:
-        raise HTTPException(status_code=400, detail="Username minimal 3 karakter")
+        raise HTTPException(
+            status_code=400, detail="Username minimal 3 karakter"
+        )
 
     clean_pass = password.strip()
     if len(clean_pass) < 8:
-        raise HTTPException(status_code=400, detail="Password minimal 8 karakter")
+        raise HTTPException(
+            status_code=400, detail="Password minimal 8 karakter"
+        )
 
     clean_role = role.strip().lower()
     if clean_role not in ["admin", "user"]:
@@ -153,7 +160,8 @@ async def create_new_user(
         ).fetchone()
         if existing:
             raise HTTPException(
-                status_code=400, detail=f"Username '{clean_user}' sudah terdaftar"
+                status_code=400,
+                detail=f"Username '{clean_user}' sudah terdaftar",
             )
 
         pw_hash = hash_password(clean_pass)
@@ -178,7 +186,10 @@ async def create_new_user(
 
     return JSONResponse(
         status_code=200,
-        content={"success": True, "message": f"Pengguna '{clean_user}' berhasil dibuat"},
+        content={
+            "success": True,
+            "message": f"Pengguna '{clean_user}' berhasil dibuat",
+        },
     )
 
 
@@ -199,14 +210,18 @@ async def reset_user_password(
 
     clean_pass = new_password.strip()
     if len(clean_pass) < 8:
-        raise HTTPException(status_code=400, detail="Password baru minimal 8 karakter")
+        raise HTTPException(
+            status_code=400, detail="Password baru minimal 8 karakter"
+        )
 
     with get_db() as conn:
         user = conn.execute(
             "SELECT id, username FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         if not user:
-            raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
+            raise HTTPException(
+                status_code=404, detail="Pengguna tidak ditemukan"
+            )
 
         pw_hash = hash_password(clean_pass)
         conn.execute(
@@ -215,7 +230,8 @@ async def reset_user_password(
         )
         # Clear any brute force rate limiting for that user
         conn.execute(
-            "DELETE FROM login_attempts WHERE username = ?", (user["username"],)
+            "DELETE FROM login_attempts WHERE username = ?",
+            (user["username"],),
         )
 
         ip = get_client_ip(request)
@@ -232,7 +248,10 @@ async def reset_user_password(
 
     return JSONResponse(
         status_code=200,
-        content={"success": True, "message": f"Password untuk '{user['username']}' berhasil diubah"},
+        content={
+            "success": True,
+            "message": f"Password untuk '{user['username']}' berhasil diubah",
+        },
     )
 
 
@@ -266,7 +285,9 @@ async def change_user_role(
             "SELECT id, username, role FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         if not user:
-            raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
+            raise HTTPException(
+                status_code=404, detail="Pengguna tidak ditemukan"
+            )
 
         conn.execute(
             "UPDATE users SET role = ? WHERE id = ?", (clean_role, user_id)
@@ -286,7 +307,10 @@ async def change_user_role(
 
     return JSONResponse(
         status_code=200,
-        content={"success": True, "message": f"Role '{user['username']}' berhasil diubah ke '{clean_role}'"},
+        content={
+            "success": True,
+            "message": f"Role '{user['username']}' berhasil diubah ke '{clean_role}'",
+        },
     )
 
 
@@ -309,7 +333,9 @@ async def kick_user_session(
             "SELECT id, username FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         if not user:
-            raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
+            raise HTTPException(
+                status_code=404, detail="Pengguna tidak ditemukan"
+            )
 
         conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
 
@@ -327,7 +353,10 @@ async def kick_user_session(
 
     return JSONResponse(
         status_code=200,
-        content={"success": True, "message": f"Sesi aktif untuk '{user['username']}' berhasil diputus"},
+        content={
+            "success": True,
+            "message": f"Sesi aktif untuk '{user['username']}' berhasil diputus",
+        },
     )
 
 
@@ -347,7 +376,8 @@ async def delete_user(
 
     if user_id == admin_session["user_id"]:
         raise HTTPException(
-            status_code=400, detail="Anda tidak dapat menghapus akun Anda sendiri!"
+            status_code=400,
+            detail="Anda tidak dapat menghapus akun Anda sendiri!",
         )
 
     with get_db() as conn:
@@ -355,7 +385,9 @@ async def delete_user(
             "SELECT id, username FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         if not user:
-            raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
+            raise HTTPException(
+                status_code=404, detail="Pengguna tidak ditemukan"
+            )
 
         uname = user["username"]
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
@@ -374,5 +406,8 @@ async def delete_user(
 
     return JSONResponse(
         status_code=200,
-        content={"success": True, "message": f"Pengguna '{uname}' berhasil dihapus"},
+        content={
+            "success": True,
+            "message": f"Pengguna '{uname}' berhasil dihapus",
+        },
     )

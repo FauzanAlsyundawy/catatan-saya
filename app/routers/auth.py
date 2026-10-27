@@ -1,25 +1,24 @@
 from pathlib import Path
-from fastapi import APIRouter, Request, Form, HTTPException, status
+
+from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
 from app.database import get_db
 from app.security import (
-    verify_password,
     check_login_rate_limit,
-    record_login_attempt,
     create_session,
-    validate_session,
     destroy_session,
-    log_activity,
     generate_token,
+    log_activity,
+    record_login_attempt,
+    validate_session,
+    verify_password,
 )
 
 router = APIRouter(prefix="", tags=["Auth"])
-templates_dir = (
-    Path(__file__).resolve().parent.parent.parent / "templates"
-)
+templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
@@ -37,9 +36,7 @@ async def login_page(request: Request):
     if session_id:
         user_session = validate_session(session_id)
         if user_session:
-            return RedirectResponse(
-                url="/", status_code=status.HTTP_302_FOUND
-            )
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     temp_csrf = generate_token(32)
     response = templates.TemplateResponse(
@@ -104,8 +101,7 @@ async def process_login(
 
     with get_db() as conn:
         find_sql = (
-            "SELECT id, username, password_hash "
-            "FROM users WHERE username = ?"
+            "SELECT id, username, password_hash FROM users WHERE username = ?"
         )
         cursor = conn.execute(find_sql, (username_clean,))
         user = cursor.fetchone()
@@ -169,8 +165,6 @@ async def process_logout(request: Request, csrf_token: str = Form(...)):
         if user_session and user_session["csrf_token"] == csrf_token:
             destroy_session(session_id, ip_address, user_agent)
 
-    resp = RedirectResponse(
-        url="/login", status_code=status.HTTP_302_FOUND
-    )
+    resp = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     resp.delete_cookie(settings.SESSION_COOKIE_NAME)
     return resp

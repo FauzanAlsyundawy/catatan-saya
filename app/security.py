@@ -1,12 +1,12 @@
 import secrets
 from datetime import timedelta
-from typing import Optional, Tuple
-from argon2 import Type, PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
+
+from argon2 import PasswordHasher, Type
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
 from app.config import settings
 from app.database import get_db
-from app.utils.timezone import utc_now, utc_now_iso, parse_utc_iso
+from app.utils.timezone import parse_utc_iso, utc_now, utc_now_iso
 
 ph = PasswordHasher(
     time_cost=3,
@@ -35,15 +35,11 @@ def generate_token(nbytes: int = 32) -> str:
     return secrets.token_urlsafe(nbytes)
 
 
-def check_login_rate_limit(
-    ip_address: str, username: str
-) -> Tuple[bool, int]:
+def check_login_rate_limit(ip_address: str, username: str) -> tuple[bool, int]:
     """Periksa apakah (IP, username) terkunci karena rate limit."""
     lockout_minutes = settings.LOGIN_RATE_LIMIT_LOCKOUT_MINUTES
     max_attempts = settings.LOGIN_RATE_LIMIT_MAX_ATTEMPTS
-    cutoff_time = (
-        utc_now() - timedelta(minutes=lockout_minutes)
-    ).isoformat()
+    cutoff_time = (utc_now() - timedelta(minutes=lockout_minutes)).isoformat()
 
     query_sql = (
         "SELECT attempt_time FROM login_attempts "
@@ -52,17 +48,13 @@ def check_login_rate_limit(
         "ORDER BY attempt_time DESC"
     )
     with get_db() as conn:
-        cursor = conn.execute(
-            query_sql, (ip_address, username, cutoff_time)
-        )
+        cursor = conn.execute(query_sql, (ip_address, username, cutoff_time))
         failed_attempts = cursor.fetchall()
 
         if len(failed_attempts) >= max_attempts:
             latest_iso = failed_attempts[0]["attempt_time"]
             latest_attempt = parse_utc_iso(latest_iso)
-            unlock_time = latest_attempt + timedelta(
-                minutes=lockout_minutes
-            )
+            unlock_time = latest_attempt + timedelta(minutes=lockout_minutes)
             now = utc_now()
             remaining = int((unlock_time - now).total_seconds())
             if remaining > 0:
@@ -89,9 +81,9 @@ def record_login_attempt(
 
 def create_session(
     user_id: int,
-    ip_address: Optional[str],
-    user_agent: Optional[str],
-) -> Tuple[str, str]:
+    ip_address: str | None,
+    user_agent: str | None,
+) -> tuple[str, str]:
     """Buat sesi baru di database."""
     session_id = generate_token(32)
     csrf_token = generate_token(32)
@@ -120,7 +112,7 @@ def create_session(
     return session_id, csrf_token
 
 
-def validate_session(session_id: str) -> Optional[dict]:
+def validate_session(session_id: str) -> dict | None:
     """Validasi sesi dan cek idle timeout 30 menit."""
     if not session_id:
         return None
@@ -179,8 +171,8 @@ def validate_session(session_id: str) -> Optional[dict]:
 
 def destroy_session(
     session_id: str,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> None:
     """Hapus sesi dan catat log LOGOUT_MANUAL."""
     with get_db() as conn:
@@ -202,11 +194,11 @@ def destroy_session(
 
 def log_activity(
     activity_type: str,
-    original_filename: Optional[str] = None,
-    category_slug: Optional[str] = None,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
-    details: Optional[str] = None,
+    original_filename: str | None = None,
+    category_slug: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    details: str | None = None,
     connection=None,
 ) -> None:
     """Catat aktivitas audit log secara append-only."""

@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any
+
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -11,9 +12,7 @@ from app.security import validate_session
 from app.utils.storage import format_file_size
 
 router = APIRouter(prefix="", tags=["Dashboard"])
-templates_dir = (
-    Path(__file__).resolve().parent.parent.parent / "templates"
-)
+templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
@@ -46,15 +45,17 @@ async def dashboard_home(request: Request):
         slug = cat["slug"]
         m = metrics.get(slug, {"file_count": 0, "total_size": 0})
         total_size = int(m["total_size"])
-        bento_categories.append({
-            "slug": slug,
-            "name": cat["name"],
-            "description": cat["description"],
-            "icon": cat["icon"],
-            "file_count": int(m["file_count"]),
-            "total_size": total_size,
-            "total_size_formatted": format_file_size(total_size),
-        })
+        bento_categories.append(
+            {
+                "slug": slug,
+                "name": cat["name"],
+                "description": cat["description"],
+                "icon": cat["icon"],
+                "file_count": int(m["file_count"]),
+                "total_size": total_size,
+                "total_size_formatted": format_file_size(total_size),
+            }
+        )
 
     nav_cats = get_nav_categories()
 

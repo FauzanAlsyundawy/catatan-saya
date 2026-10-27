@@ -1,20 +1,21 @@
 import io
 import re
-import pytest
-from httpx import AsyncClient, ASGITransport
 
-from app.main import app, seed_initial_users
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.config import settings
-from app.database import init_db, get_db
+from app.database import get_db, init_db
+from app.main import app, seed_initial_users
 from app.security import (
-    hash_password,
-    verify_password,
-    record_login_attempt,
     check_login_rate_limit,
+    hash_password,
+    record_login_attempt,
+    verify_password,
 )
 from app.utils.storage import (
-    sanitize_filename,
     resolve_duplicate_filename,
+    sanitize_filename,
 )
 from app.utils.timezone import format_wib, utc_now_iso
 
@@ -58,9 +59,7 @@ def test_rate_limiting():
     user = "audit_test_user"
 
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM login_attempts WHERE ip_address = ?", (ip,)
-        )
+        conn.execute("DELETE FROM login_attempts WHERE ip_address = ?", (ip,))
 
     for _ in range(4):
         record_login_attempt(ip, user, success=False)
@@ -114,9 +113,7 @@ async def test_full_auth_and_file_lifecycle():
         test_user = "testadmin"
         test_pass = "AdminVault2026!"
         with get_db() as conn:
-            conn.execute(
-                "DELETE FROM users WHERE username = ?", (test_user,)
-            )
+            conn.execute("DELETE FROM users WHERE username = ?", (test_user,))
             insert_user_sql = (
                 "INSERT INTO users (username, password_hash, created_at) "
                 "VALUES (?, ?, ?)"
@@ -186,8 +183,10 @@ async def test_full_auth_and_file_lifecycle():
         valid_file = (
             "Catatan_Arsitektur.docx",
             io.BytesIO(doc_content),
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document",
+            (
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
         )
         upload_res = await client.post(
             "/api/files/upload",
@@ -203,8 +202,10 @@ async def test_full_auth_and_file_lifecycle():
         valid_file_dup = (
             "Catatan_Arsitektur.docx",
             io.BytesIO(doc_content),
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document",
+            (
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
         )
         dup_res = await client.post(
             "/api/files/upload",
@@ -243,8 +244,7 @@ async def test_full_auth_and_file_lifecycle():
             or "Unggah Berkas" in audit_res.text
         )
         assert (
-            "DELETE_FILE" in audit_res.text
-            or "Hapus Berkas" in audit_res.text
+            "DELETE_FILE" in audit_res.text or "Hapus Berkas" in audit_res.text
         )
         assert "Catatan_Arsitektur.docx" in audit_res.text
         assert "WIB" in audit_res.text
@@ -270,9 +270,7 @@ async def test_regular_user_cannot_access_audit_log():
         test_user = "test_regular_user"
         test_pass = "RegularUserPassword2026!"
         with get_db() as conn:
-            conn.execute(
-                "DELETE FROM users WHERE username = ?", (test_user,)
-            )
+            conn.execute("DELETE FROM users WHERE username = ?", (test_user,))
             insert_user_sql = (
                 "INSERT INTO users (username, password_hash, role, created_at) "
                 "VALUES (?, ?, 'user', ?)"
@@ -282,7 +280,8 @@ async def test_regular_user_cannot_access_audit_log():
                 (test_user, hash_password(test_pass), utc_now_iso()),
             )
 
-        login_res = await client.get("/login")
+        login_page_res = await client.get("/login")
+        assert login_page_res.status_code == 200
         temp_csrf = client.cookies.get("temp_csrf_token")
 
         login_post = await client.post(
@@ -331,7 +330,8 @@ async def test_admin_user_management_and_active_session():
         transport=transport, base_url="http://testserver"
     ) as client:
         # 1. Login as administrator
-        login_res = await client.get("/login")
+        login_page_admin = await client.get("/login")
+        assert login_page_admin.status_code == 200
         temp_csrf = client.cookies.get("temp_csrf_token")
         login_post = await client.post(
             "/auth/login",
@@ -408,5 +408,3 @@ async def test_admin_user_management_and_active_session():
         )
         assert del_res.status_code == 200
         assert del_res.json()["success"] is True
-
-

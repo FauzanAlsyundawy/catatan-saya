@@ -1,6 +1,7 @@
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
+
 from app.config import settings
 
 
@@ -9,9 +10,7 @@ def get_connection() -> sqlite3.Connection:
     db_path = settings.abs_database_path
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(
-        str(db_path), timeout=10.0, check_same_thread=False
-    )
+    conn = sqlite3.connect(str(db_path), timeout=10.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA synchronous = NORMAL;")
@@ -110,8 +109,7 @@ def init_db() -> None:
 
         # Indexes for fast querying
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS "
-            "idx_files_cat ON files(category_slug);"
+            "CREATE INDEX IF NOT EXISTS idx_files_cat ON files(category_slug);"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS "

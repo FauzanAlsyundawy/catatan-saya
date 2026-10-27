@@ -1,7 +1,8 @@
-from typing import Optional, Dict, Any
-from fastapi import Request, HTTPException, status
+from typing import Any
 
-from app.config import settings, CATEGORIES
+from fastapi import HTTPException, Request, status
+
+from app.config import CATEGORIES, settings
 from app.database import get_db
 from app.security import validate_session
 
@@ -14,7 +15,7 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "127.0.0.1"
 
 
-async def get_current_user_session(request: Request) -> Dict[str, Any]:
+async def get_current_user_session(request: Request) -> dict[str, Any]:
     """Dependency untuk memvalidasi sesi aktif pengguna."""
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:
@@ -33,7 +34,7 @@ async def get_current_user_session(request: Request) -> Dict[str, Any]:
     return user_session
 
 
-def verify_csrf(session: Dict[str, Any], token: Optional[str]) -> bool:
+def verify_csrf(session: dict[str, Any], token: str | None) -> bool:
     """Verifikasi token CSRF secara konstan."""
     if not token or not session.get("csrf_token"):
         return False

@@ -1,11 +1,12 @@
 import math
 from pathlib import Path
-from typing import Optional, Any
-from fastapi import APIRouter, Request, Query, status
+from typing import Any
+
+from fastapi import APIRouter, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings, CATEGORY_MAP
+from app.config import CATEGORY_MAP, settings
 from app.database import get_db
 from app.dependencies import get_nav_categories
 from app.security import validate_session
@@ -19,9 +20,9 @@ PAGE_SIZE = 25
 
 
 def _build_audit_conditions(
-    activity_type: Optional[str],
-    start_date: Optional[str],
-    end_date: Optional[str],
+    activity_type: str | None,
+    start_date: str | None,
+    end_date: str | None,
 ) -> tuple[list[str], list[Any]]:
     """Build WHERE clause conditions and parameters for audit log query."""
     conditions: list[str] = []
@@ -46,9 +47,9 @@ def _build_audit_conditions(
 async def view_audit_log(
     request: Request,
     page: int = Query(1, ge=1),
-    activity_type: Optional[str] = Query(None),
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
+    activity_type: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
 ):
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:
@@ -64,9 +65,7 @@ async def view_audit_log(
 
     # Hanya admin yang diizinkan melihat log audit
     if user_session.get("role") != "admin":
-        return RedirectResponse(
-            url="/", status_code=status.HTTP_302_FOUND
-        )
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     conditions, params = _build_audit_conditions(
         activity_type, start_date, end_date
