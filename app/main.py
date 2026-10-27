@@ -5,16 +5,50 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import init_db
-from app.routers import auth, dashboard, files, audit
+from app.database import init_db, get_db
+from app.security import hash_password
+from app.utils.timezone import utc_now_iso
+from app.routers import auth, dashboard, files, audit, users
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def seed_initial_users() -> None:
+    """Ensure administrator and kencana default accounts exist."""
+    users_to_seed = [
+        ("administrator", "Fauzan@2026!", "admin"),
+        ("kencana", "kencana@2026!", "user"),
+    ]
+    now = utc_now_iso()
+    with get_db() as conn:
+        for uname, pwd, role in users_to_seed:
+            existing = conn.execute(
+                "SELECT id FROM users WHERE username = ?", (uname,)
+            ).fetchone()
+            if existing is None:
+                pw_hash = hash_password(pwd)
+                conn.execute(
+                    "INSERT INTO users (username, password_hash, role, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (uname, pw_hash, role, now),
+                )
+            else:
+                pw_hash = hash_password(pwd)
+                conn.execute(
+                    "UPDATE users SET password_hash = ?, role = ? WHERE id = ?",
+                    (pw_hash, role, existing["id"]),
+                )
+            # Clear rate limit lockouts for these accounts
+            conn.execute(
+                "DELETE FROM login_attempts WHERE username = ?", (uname,)
+            )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inisialisasi basis data SQLite dan struktur folder
     init_db()
+    seed_initial_users()
     yield
 
 
@@ -83,6 +117,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(files.router)
 app.include_router(audit.router)
+app.include_router(users.router)
 
 if __name__ == "__main__":
     import uvicorn

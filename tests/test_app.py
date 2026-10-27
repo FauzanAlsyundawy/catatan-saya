@@ -3,7 +3,7 @@ import re
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-from app.main import app
+from app.main import app, seed_initial_users
 from app.config import settings
 from app.database import init_db, get_db
 from app.security import (
@@ -21,8 +21,9 @@ from app.utils.timezone import format_wib, utc_now_iso
 
 @pytest.fixture(autouse=True)
 def setup_test_db():
-    """Ensure database and tables exist for testing."""
+    """Ensure database, tables, and seed users exist for testing."""
     init_db()
+    seed_initial_users()
 
 
 def test_argon2id_hashing():
@@ -316,4 +317,96 @@ async def test_regular_user_cannot_access_audit_log():
             logs = cursor.fetchall()
             assert len(logs) > 0
             assert any(r["activity_type"] == "LOGIN_SUCCESS" for r in logs)
+
+        # Direct access to /users is also blocked for regular user
+        users_res = await client.get("/users", follow_redirects=False)
+        assert users_res.status_code == 302
+        assert users_res.headers["location"] == "/"
+
+
+@pytest.mark.asyncio
+async def test_admin_user_management_and_active_session():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        # 1. Login as administrator
+        login_res = await client.get("/login")
+        temp_csrf = client.cookies.get("temp_csrf_token")
+        login_post = await client.post(
+            "/auth/login",
+            data={
+                "username": "administrator",
+                "password": "Fauzan@2026!",
+                "csrf_token": temp_csrf,
+            },
+            follow_redirects=False,
+        )
+        assert login_post.status_code == 302
+
+        # 2. Access /users page
+        users_page = await client.get("/users")
+        assert users_page.status_code == 200
+        assert "Manajemen Pengguna" in users_page.text
+        assert "administrator" in users_page.text
+        assert "kencana" in users_page.text
+        assert "Online / Aktif Sekarang" in users_page.text
+
+        csrf_match = re.search(
+            r'name="csrf-token" content="([^"]+)"', users_page.text
+        )
+        assert csrf_match is not None
+        admin_csrf = csrf_match.group(1)
+
+        # 3. Create a new user via API
+        create_res = await client.post(
+            "/api/users",
+            data={
+                "username": "tester_baru",
+                "password": "PasswordBaru123!",
+                "role": "user",
+                "csrf_token": admin_csrf,
+            },
+        )
+        assert create_res.status_code == 200
+        assert create_res.json()["success"] is True
+
+        with get_db() as conn:
+            new_u = conn.execute(
+                "SELECT id, username, role FROM users WHERE username = 'tester_baru'"
+            ).fetchone()
+            assert new_u is not None
+            assert new_u["role"] == "user"
+            new_uid = new_u["id"]
+
+        # 4. Reset password
+        reset_res = await client.post(
+            f"/api/users/{new_uid}/reset-password",
+            data={
+                "new_password": "NewResetPassword2026!",
+                "csrf_token": admin_csrf,
+            },
+        )
+        assert reset_res.status_code == 200
+        assert reset_res.json()["success"] is True
+
+        # 5. Change role to admin
+        role_res = await client.post(
+            f"/api/users/{new_uid}/role",
+            data={
+                "role": "admin",
+                "csrf_token": admin_csrf,
+            },
+        )
+        assert role_res.status_code == 200
+        assert role_res.json()["success"] is True
+
+        # 6. Delete user
+        del_res = await client.delete(
+            f"/api/users/{new_uid}",
+            headers={"X-CSRF-Token": admin_csrf},
+        )
+        assert del_res.status_code == 200
+        assert del_res.json()["success"] is True
+
 
