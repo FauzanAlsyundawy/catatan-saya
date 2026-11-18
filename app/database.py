@@ -129,3 +129,18 @@ def init_db() -> None:
             "idx_login_att ON login_attempts("
             "ip_address, username, attempt_time);"
         )
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS file_tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                tag_name TEXT NOT NULL,
+                tag_color TEXT NOT NULL DEFAULT '#64748b',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_file_tags_file_id "
+            "ON file_tags(file_id);"
+        )

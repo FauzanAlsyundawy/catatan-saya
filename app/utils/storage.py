@@ -41,13 +41,14 @@ def resolve_duplicate_filename(
     stem = path.stem
     ext = path.suffix
 
-    match = re.search(r"^(.*?)\s*\((\d+)\)$", stem)
-    if match:
-        base_stem = match.group(1).strip()
-        start_counter = int(match.group(2)) + 1
-    else:
-        base_stem = stem
-        start_counter = 1
+    base_stem = stem
+    start_counter = 1
+    if stem.endswith(")") and " (" in stem:
+        idx = stem.rfind(" (")
+        num_str = stem[idx + 2:-1]
+        if num_str.isdigit():
+            base_stem = stem[:idx]
+            start_counter = int(num_str) + 1
 
     counter = start_counter
     while True:

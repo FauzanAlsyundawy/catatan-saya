@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: catatan-saya:latest
+    container_name: catatan-saya-vault
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - SESSION_COOKIE_NAME=catatan_session
+      - SESSION_COOKIE_SECURE=true
+      - SESSION_COOKIE_SAMESITE=strict
+      - SESSION_IDLE_TIMEOUT_MINUTES=30
+      - LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
+      - LOGIN_RATE_LIMIT_LOCKOUT_MINUTES=15
+      - DATABASE_PATH=data/app.db
+      - UPLOAD_DIR=uploads
+      - MAX_UPLOAD_SIZE_MB=50
+      - ALLOWED_EXTENSIONS=.doc,.docx,.xls,.xlsx,.csv,.txt,.log,.cfg,.conf,.ini,.json,.xml,.yml,.md,.pdf,.ppt,.pptx,.pkt,.pka,.zip,.png,.jpg
+    volumes:
+      - app_data:/app/data
+      - app_uploads:/app/uploads
+      - app_backups:/app/backups
+
+volumes:
+  app_data:
+  app_uploads:
+  app_backups:

@@ -2,14 +2,15 @@ import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import get_db, init_db
 from app.routers import audit, auth, dashboard, files, users
-from app.security import hash_password
+from app.security import hash_password, validate_session
+from app.utils.storage import format_file_size
 from app.utils.timezone import utc_now_iso
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -121,6 +122,68 @@ app.include_router(dashboard.router)
 app.include_router(files.router)
 app.include_router(audit.router)
 app.include_router(users.router)
+
+
+@app.get("/api/search")
+async def api_search(request: Request, q: str = Query(default="")):
+    """Search files by name across all categories. Requires valid session."""
+    session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Otentikasi diperlukan"},
+        )
+    user_session = validate_session(session_id)
+    if not user_session:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Otentikasi diperlukan"},
+        )
+
+    q = q.strip()
+    if len(q) < 2:
+        return JSONResponse(content={"results": []})
+
+    search_sql = (
+        "SELECT id, category_slug, original_filename, file_size, "
+        "extension, created_at FROM files WHERE original_filename LIKE ? "
+        "ORDER BY created_at DESC LIMIT 20"
+    )
+    with get_db() as conn:
+        cursor = conn.execute(search_sql, (f"%{q}%",))
+        rows = cursor.fetchall()
+
+    results = [
+        {
+            "id": row["id"],
+            "category_slug": row["category_slug"],
+            "original_filename": row["original_filename"],
+            "size_formatted": format_file_size(int(row["file_size"])),
+            "extension": row["extension"],
+        }
+        for row in rows
+    ]
+    return JSONResponse(content={"results": results})
+
+
+@app.get("/api/storage-info")
+async def api_storage_info(request: Request):
+    """Return total storage used across all files."""
+    session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_id or not validate_session(session_id):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Otentikasi diperlukan"},
+        )
+    with get_db() as conn:
+        cursor = conn.execute("SELECT COALESCE(SUM(file_size), 0) FROM files")
+        total_bytes = int(cursor.fetchone()[0])
+    return JSONResponse(
+        content={
+            "total_bytes": total_bytes,
+            "total_formatted": format_file_size(total_bytes),
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn

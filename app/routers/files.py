@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from typing import Any
 
 import aiofiles
@@ -42,6 +43,10 @@ from app.utils.timezone import format_wib, utc_now_iso
 router = APIRouter(prefix="", tags=["Files"])
 templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
+
+MSG_CSRF_INVALID = "Token CSRF tidak valid"
+MSG_FILE_NOT_FOUND = "Berkas tidak ditemukan"
+MSG_PHYSICAL_FILE_NOT_FOUND = "Berkas fisik tidak ditemukan di server"
 
 
 async def _save_upload_stream(
@@ -129,7 +134,13 @@ def _save_file_record(
     return new_file_id, final_name
 
 
-@router.get("/category/{slug}", response_class=HTMLResponse)
+@router.get(
+    "/category/{slug}",
+    response_class=HTMLResponse,
+    responses={
+        404: {"description": "Kategori tidak ditemukan"},
+    },
+)
 async def category_detail(request: Request, slug: str):
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:
@@ -158,6 +169,25 @@ async def category_detail(request: Request, slug: str):
         cursor = conn.execute(select_sql, (clean_slug,))
         db_files = cursor.fetchall()
 
+        # Fetch tags for all files in this category in one query
+        file_ids = [f["id"] for f in db_files]
+        tags_by_file: dict[int, list[dict]] = {fid: [] for fid in file_ids}
+        if file_ids:
+            placeholders = ",".join("?" * len(file_ids))
+            tags_cursor = conn.execute(
+                f"SELECT id, file_id, tag_name, tag_color FROM file_tags "
+                f"WHERE file_id IN ({placeholders}) ORDER BY id ASC",
+                file_ids,
+            )
+            for tag_row in tags_cursor.fetchall():
+                tags_by_file[tag_row["file_id"]].append(
+                    {
+                        "id": tag_row["id"],
+                        "tag_name": tag_row["tag_name"],
+                        "tag_color": tag_row["tag_color"],
+                    }
+                )
+
     files: list[dict[str, Any]] = []
     total_size = 0
     for f in db_files:
@@ -172,6 +202,7 @@ async def category_detail(request: Request, slug: str):
                 "extension": f["extension"],
                 "icon": get_file_icon(str(f["extension"])),
                 "created_at_wib": format_wib(f["created_at"]),
+                "tags": tags_by_file.get(f["id"], []),
             }
         )
 
@@ -194,19 +225,27 @@ async def category_detail(request: Request, slug: str):
     )
 
 
-@router.post("/api/files/upload")
+@router.post(
+    "/api/files/upload",
+    responses={
+        400: {"description": "Permintaan berkas tidak valid"},
+        403: {"description": "Token CSRF tidak valid"},
+        413: {"description": "Ukuran berkas melebihi batas"},
+        500: {"description": "Gagal menyimpan berkas"},
+    },
+)
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     category_slug: str = Form(...),
     x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
 ):
-    user_session = await get_current_user_session(request)
+    user_session = get_current_user_session(request)
 
     if not verify_csrf(user_session, x_csrf_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Token CSRF tidak valid",
+            detail=MSG_CSRF_INVALID,
         )
 
     clean_slug = category_slug.strip().lower()
@@ -288,9 +327,14 @@ async def upload_file(
     )
 
 
-@router.get("/api/files/download/{file_id}")
+@router.get(
+    "/api/files/download/{file_id}",
+    responses={
+        404: {"description": "Berkas tidak ditemukan"},
+    },
+)
 async def download_file(request: Request, file_id: int):
-    _ = await get_current_user_session(request)
+    _ = get_current_user_session(request)
 
     query_sql = (
         "SELECT id, category_slug, original_filename, "
@@ -301,7 +345,7 @@ async def download_file(request: Request, file_id: int):
         record = cursor.fetchone()
 
     if record is None:
-        raise HTTPException(status_code=404, detail="Berkas tidak ditemukan")
+        raise HTTPException(status_code=404, detail=MSG_FILE_NOT_FOUND)
 
     file_path = (
         settings.abs_upload_dir / str(record["stored_filename"])
@@ -310,7 +354,7 @@ async def download_file(request: Request, file_id: int):
     if not file_path.exists() or not str(file_path).startswith(base_dir):
         raise HTTPException(
             status_code=404,
-            detail="Berkas fisik tidak ditemukan di server",
+            detail=MSG_PHYSICAL_FILE_NOT_FOUND,
         )
 
     original_filename = str(record["original_filename"])
@@ -330,18 +374,85 @@ async def download_file(request: Request, file_id: int):
     )
 
 
-@router.delete("/api/files/{file_id}")
+@router.get(
+    "/api/files/view/{file_id}",
+    responses={
+        404: {"description": "Berkas tidak ditemukan"},
+    },
+)
+async def view_file(request: Request, file_id: int):
+    """View file directly in browser with inline disposition (no download)."""
+    _ = get_current_user_session(request)
+
+    query_sql = (
+        "SELECT id, category_slug, original_filename, "
+        "stored_filename, file_size, mime_type FROM files WHERE id = ?"
+    )
+    with get_db() as conn:
+        cursor = conn.execute(query_sql, (file_id,))
+        record = cursor.fetchone()
+
+    if record is None:
+        raise HTTPException(status_code=404, detail=MSG_FILE_NOT_FOUND)
+
+    file_path = (
+        settings.abs_upload_dir / str(record["stored_filename"])
+    ).resolve()
+    base_dir = str(settings.abs_upload_dir.resolve())
+    if not file_path.exists() or not str(file_path).startswith(base_dir):
+        raise HTTPException(
+            status_code=404,
+            detail=MSG_PHYSICAL_FILE_NOT_FOUND,
+        )
+
+    original_filename = str(record["original_filename"])
+    ext = get_file_extension(original_filename)
+
+    # Determine optimal media type for inline viewing in browser
+    if ext in [
+        ".txt", ".log", ".cfg", ".conf", ".ini", ".json",
+        ".xml", ".yml", ".md", ".py", ".sh", ".sql", ".csv",
+    ]:
+        media_type = "text/plain; charset=utf-8"
+    elif ext == ".pdf":
+        media_type = "application/pdf"
+    elif ext in [".png", ".jpg", ".jpeg"]:
+        media_type = f"image/{ext.replace('.', '')}"
+    else:
+        media_type = str(record["mime_type"] or "application/octet-stream")
+
+    headers = {
+        "Content-Disposition": f'inline; filename="{original_filename}"',
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+    }
+
+    return FileResponse(
+        path=str(file_path),
+        filename=original_filename,
+        media_type=media_type,
+        headers=headers,
+    )
+
+
+@router.delete(
+    "/api/files/{file_id}",
+    responses={
+        403: {"description": "Token CSRF tidak valid"},
+        404: {"description": "Berkas tidak ditemukan"},
+    },
+)
 async def delete_file(
     request: Request,
     file_id: int,
     x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
 ):
-    user_session = await get_current_user_session(request)
+    user_session = get_current_user_session(request)
 
     if not verify_csrf(user_session, x_csrf_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Token CSRF tidak valid",
+            detail=MSG_CSRF_INVALID,
         )
 
     select_sql = (
@@ -354,7 +465,7 @@ async def delete_file(
 
         if record is None:
             raise HTTPException(
-                status_code=404, detail="Berkas tidak ditemukan"
+                status_code=404, detail=MSG_FILE_NOT_FOUND
             )
 
         ip_address = get_client_ip(request)
@@ -387,4 +498,110 @@ async def delete_file(
             "success": True,
             "message": f"Berkas '{original_name}' berhasil dihapus",
         },
+    )
+
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+@router.post(
+    "/api/files/{file_id}/tags",
+    responses={
+        400: {"description": "Nama atau warna tag tidak valid"},
+        403: {"description": "Token CSRF tidak valid"},
+        404: {"description": "Berkas tidak ditemukan"},
+    },
+)
+async def add_file_tag(
+    request: Request,
+    file_id: int,
+    tag_name: str = Form(...),
+    tag_color: str = Form(default="#64748b"),
+    x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+):
+    user_session = get_current_user_session(request)
+
+    if not verify_csrf(user_session, x_csrf_token):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MSG_CSRF_INVALID,
+        )
+
+    tag_name = tag_name.strip()
+    if not tag_name or len(tag_name) > 30:
+        raise HTTPException(
+            status_code=400,
+            detail="Nama tag wajib diisi dan maksimal 30 karakter",
+        )
+    if not _HEX_COLOR_RE.match(tag_color):
+        raise HTTPException(
+            status_code=400,
+            detail="Warna tag harus format hex (#rrggbb)",
+        )
+
+    now = utc_now_iso()
+    with get_db() as conn:
+        # Verify file exists
+        row = conn.execute(
+            "SELECT id FROM files WHERE id = ?", (file_id,)
+        ).fetchone()
+        if row is None:
+            raise HTTPException(
+                status_code=404, detail=MSG_FILE_NOT_FOUND
+            )
+
+        cursor = conn.execute(
+            "INSERT INTO file_tags (file_id, tag_name, tag_color, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (file_id, tag_name, tag_color, now),
+        )
+        new_tag_id = int(cursor.lastrowid or 0)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": True,
+            "tag": {
+                "id": new_tag_id,
+                "tag_name": tag_name,
+                "tag_color": tag_color,
+            },
+        },
+    )
+
+
+@router.delete(
+    "/api/files/{file_id}/tags/{tag_id}",
+    responses={
+        403: {"description": "Token CSRF tidak valid"},
+        404: {"description": "Tag tidak ditemukan"},
+    },
+)
+async def delete_file_tag(
+    request: Request,
+    file_id: int,
+    tag_id: int,
+    x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+):
+    user_session = get_current_user_session(request)
+
+    if not verify_csrf(user_session, x_csrf_token):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MSG_CSRF_INVALID,
+        )
+
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM file_tags WHERE id = ? AND file_id = ?",
+            (tag_id, file_id),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Tag tidak ditemukan")
+
+        conn.execute("DELETE FROM file_tags WHERE id = ?", (tag_id,))
+
+    return JSONResponse(
+        status_code=200,
+        content={"success": True},
     )

@@ -15,7 +15,7 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "127.0.0.1"
 
 
-async def get_current_user_session(request: Request) -> dict[str, Any]:
+def get_current_user_session(request: Request) -> dict[str, Any]:
     """Dependency untuk memvalidasi sesi aktif pengguna."""
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:

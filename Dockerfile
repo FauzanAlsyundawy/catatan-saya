@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create persistent directories (will be overridden by Docker volumes in prod)
-RUN mkdir -p data uploads
+RUN mkdir -p data uploads backups
 
 # Expose application port
 EXPOSE 8000

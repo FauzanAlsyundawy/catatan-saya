@@ -80,9 +80,7 @@ def test_rate_limiting():
 @pytest.mark.asyncio
 async def test_unauthenticated_redirect():
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.get("/", follow_redirects=False)
         assert response.status_code == 302
         assert response.headers["location"] == "/login"
@@ -99,9 +97,7 @@ async def test_unauthenticated_redirect():
 @pytest.mark.asyncio
 async def test_security_headers():
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.get("/login")
         assert response.headers["X-Frame-Options"] == "DENY"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
@@ -112,9 +108,7 @@ async def test_security_headers():
 @pytest.mark.asyncio
 async def test_full_auth_and_file_lifecycle():
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         test_user = "testadmin"
         test_pass = "AdminVault2026!"
         with get_db() as conn:
@@ -164,9 +158,7 @@ async def test_full_auth_and_file_lifecycle():
         assert "Word" in dash_res.text
         assert "Notepad++" in dash_res.text
 
-        csrf_match = re.search(
-            r'name="csrf-token" content="([^"]+)"', dash_res.text
-        )
+        csrf_match = re.search(r'name="csrf-token" content="([^"]+)"', dash_res.text)
         assert csrf_match is not None
         user_csrf = csrf_match.group(1)
 
@@ -220,10 +212,7 @@ async def test_full_auth_and_file_lifecycle():
         )
         assert dup_res.status_code == 200
         dup_data = dup_res.json()
-        assert (
-            dup_data["file"]["original_filename"]
-            == "Catatan_Arsitektur (1).docx"
-        )
+        assert dup_data["file"]["original_filename"] == "Catatan_Arsitektur (1).docx"
         dup_file_id = dup_data["file"]["id"]
 
         download_res = await client.get(f"/api/files/download/{file_id}")
@@ -244,13 +233,8 @@ async def test_full_auth_and_file_lifecycle():
 
         audit_res = await client.get("/audit-log")
         assert audit_res.status_code == 200
-        assert (
-            "UPLOAD_FILE" in audit_res.text
-            or "Unggah Berkas" in audit_res.text
-        )
-        assert (
-            "DELETE_FILE" in audit_res.text or "Hapus Berkas" in audit_res.text
-        )
+        assert "UPLOAD_FILE" in audit_res.text or "Unggah Berkas" in audit_res.text
+        assert "DELETE_FILE" in audit_res.text or "Hapus Berkas" in audit_res.text
         assert "Catatan_Arsitektur.docx" in audit_res.text
         assert "WIB" in audit_res.text
 
@@ -269,9 +253,7 @@ async def test_full_auth_and_file_lifecycle():
 @pytest.mark.asyncio
 async def test_regular_user_cannot_access_audit_log():
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         test_user = "test_regular_user"
         test_pass = "RegularUserPassword2026!"
         with get_db() as conn:
@@ -317,8 +299,7 @@ async def test_regular_user_cannot_access_audit_log():
         # Verify activity was logged in audit_logs table
         with get_db() as conn:
             cursor = conn.execute(
-                "SELECT activity_type, details FROM audit_logs "
-                "WHERE details LIKE ?",
+                "SELECT activity_type, details FROM audit_logs " "WHERE details LIKE ?",
                 (f"%{test_user}%",),
             )
             logs = cursor.fetchall()
@@ -334,9 +315,7 @@ async def test_regular_user_cannot_access_audit_log():
 @pytest.mark.asyncio
 async def test_admin_user_management_and_active_session():
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         # 1. Login as administrator
         login_page_admin = await client.get("/login")
         assert login_page_admin.status_code == 200
@@ -360,9 +339,7 @@ async def test_admin_user_management_and_active_session():
         assert "kencana" in users_page.text
         assert "Online / Aktif Sekarang" in users_page.text
 
-        csrf_match = re.search(
-            r'name="csrf-token" content="([^"]+)"', users_page.text
-        )
+        csrf_match = re.search(r'name="csrf-token" content="([^"]+)"', users_page.text)
         assert csrf_match is not None
         admin_csrf = csrf_match.group(1)
 
@@ -381,8 +358,7 @@ async def test_admin_user_management_and_active_session():
 
         with get_db() as conn:
             new_u = conn.execute(
-                "SELECT id, username, role FROM users "
-                "WHERE username = 'tester_baru'"
+                "SELECT id, username, role FROM users " "WHERE username = 'tester_baru'"
             ).fetchone()
             assert new_u is not None
             assert new_u["role"] == "user"
@@ -417,3 +393,90 @@ async def test_admin_user_management_and_active_session():
         )
         assert del_res.status_code == 200
         assert del_res.json()["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_search_and_tag_endpoints():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        # 1. Unauthenticated search fails
+        unauth_search = await client.get("/api/search?q=test")
+        assert unauth_search.status_code == 401
+
+        # 2. Login as admin
+        await client.get("/login")
+        csrf = client.cookies.get("temp_csrf_token")
+        login_res = await client.post(
+            "/auth/login",
+            data={
+                "username": "administrator",
+                "password": "Fauzan@2026!",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        assert login_res.status_code == 302
+
+        # 3. Check storage info
+        storage_res = await client.get("/api/storage-info")
+        assert storage_res.status_code == 200
+        assert "total_bytes" in storage_res.json()
+
+        # 4. Search with < 2 chars returns empty list
+        short_search = await client.get("/api/search?q=a")
+        assert short_search.status_code == 200
+        assert short_search.json()["results"] == []
+
+        # 5. Upload a test file to test tagging
+        dash_res = await client.get("/")
+        csrf_match = re.search(r'name="csrf-token" content="([^"]+)"', dash_res.text)
+        assert csrf_match is not None
+        user_csrf = csrf_match.group(1)
+
+        doc_content = b"Content for tagging test."
+        upload_res = await client.post(
+            "/api/files/upload",
+            files={"file": ("Test_Doc.txt", io.BytesIO(doc_content), "text/plain")},
+            data={"category_slug": "notepadpp"},
+            headers={"X-CSRF-Token": user_csrf},
+        )
+        assert upload_res.status_code == 200
+        file_id = upload_res.json()["file"]["id"]
+
+        # 6. Search finds the file
+        search_res = await client.get("/api/search?q=Test_Doc")
+        assert search_res.status_code == 200
+        results = search_res.json()["results"]
+        assert len(results) >= 1
+        assert any(r["id"] == file_id for r in results)
+
+        # 7. Add tag to file
+        tag_res = await client.post(
+            f"/api/files/{file_id}/tags",
+            data={"tag_name": "Penting", "tag_color": "#e11d48"},
+            headers={"X-CSRF-Token": user_csrf},
+        )
+        assert tag_res.status_code == 200
+        tag_data = tag_res.json()
+        assert tag_data["success"] is True
+        tag_id = tag_data["tag"]["id"]
+
+        # 8. Test inline file view without download
+        view_res = await client.get(f"/api/files/view/{file_id}")
+        assert view_res.status_code == 200
+        assert "inline" in view_res.headers["content-disposition"]
+        assert view_res.content == doc_content
+
+        # 9. Delete tag
+        del_tag = await client.delete(
+            f"/api/files/{file_id}/tags/{tag_id}",
+            headers={"X-CSRF-Token": user_csrf},
+        )
+        assert del_tag.status_code == 200
+        assert del_tag.json()["success"] is True
+
+        # Clean up file
+        await client.delete(
+            f"/api/files/{file_id}",
+            headers={"X-CSRF-Token": user_csrf},
+        )

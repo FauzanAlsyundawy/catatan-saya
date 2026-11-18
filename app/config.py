@@ -60,8 +60,10 @@ settings = Settings()
 CATEGORIES = [
     {
         "slug": "word",
-        "name": "Word",
-        "description": "Dokumen teks, format Word, dan panduan kerja",
+        "name": "Word/PDF/PPT",
+        "description": (
+            "Dokumen teks Word, berkas PDF, presentasi, dan materi kerja"
+        ),
         "icon": "file-text",
     },
     {

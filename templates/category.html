@@ -7,6 +7,46 @@
 <input type="hidden" id="category-slug" value="{{ category.slug }}">
 <input type="hidden" id="allowed-extensions" value="{{ allowed_extensions }}">
 
+<!-- Vault PIN Lock Overlay (Hanya untuk User Biasa, Admin Tidak Dikunci) -->
+{% if current_user and current_user.role != 'admin' %}
+<div id="vault-pin-overlay" class="vault-locked-overlay" style="display: none;" data-category-slug="{{ category.slug }}" data-pin-length="{{ 6 if category.slug == 'kuliah' else 4 }}">
+    <div style="text-align: center; max-width: 320px;">
+        <div style="width: 52px; height: 52px; border-radius: var(--radius-full); background: var(--accent-subtle); border: 1px solid var(--accent-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--accent);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h3 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Vault Terkunci</h3>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">Masukkan PIN keamanan untuk mengakses brankas kategori <strong>{{ category.name }}</strong></p>
+        
+        <div class="vault-pin-display" style="justify-content: center; margin-bottom: 20px;">
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            {% if category.slug == 'kuliah' %}
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            {% endif %}
+        </div>
+
+        <div class="vault-pin-keypad" style="margin: 0 auto;">
+            <button type="button" class="pin-key" data-val="1">1</button>
+            <button type="button" class="pin-key" data-val="2">2</button>
+            <button type="button" class="pin-key" data-val="3">3</button>
+            <button type="button" class="pin-key" data-val="4">4</button>
+            <button type="button" class="pin-key" data-val="5">5</button>
+            <button type="button" class="pin-key" data-val="6">6</button>
+            <button type="button" class="pin-key" data-val="7">7</button>
+            <button type="button" class="pin-key" data-val="8">8</button>
+            <button type="button" class="pin-key" data-val="9">9</button>
+            <button type="button" class="pin-key" data-val="lock" title="Reset PIN" style="font-size: 13px;">🔒</button>
+            <button type="button" class="pin-key" data-val="0">0</button>
+            <button type="button" class="pin-key" data-val="del" title="Hapus" style="font-size: 13px;">⌫</button>
+        </div>
+        <div class="pin-error-msg" style="color: var(--status-danger); font-size: 12px; margin-top: 14px; font-weight: 500; display: none;"></div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Banner Kategori -->
 <div class="category-header-banner">
     <div>
@@ -18,6 +58,17 @@
         <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">{{ category.description }}</p>
     </div>
     <div style="display: flex; align-items: center; gap: 16px;">
+        {% if current_user and current_user.role == 'admin' %}
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>Admin Clearance</span>
+        </span>
+        {% else %}
+        <button type="button" id="btn-lock-vault" class="btn btn-secondary btn-sm" title="Kunci Vault Kategori Ini" onclick="lockVaultCurrentCategory()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Kunci Vault</span>
+        </button>
+        {% endif %}
         <div style="text-align: right;">
             <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">{{ total_files }} Berkas</div>
             <div style="font-size: 12px; color: var(--text-muted);">{{ total_size_formatted }}</div>
@@ -40,13 +91,13 @@
 <div id="upload-queue" class="upload-queue-container"></div>
 
 <!-- Daftar File -->
-<div class="table-card">
+<div class="table-card" style="position: relative;">
     {% if files and files|length > 0 %}
     <div class="table-responsive">
         <table class="app-table">
             <thead>
                 <tr>
-                    <th style="width: 50%;">Nama Berkas</th>
+                    <th style="width: 48%;">Nama Berkas & Tag</th>
                     <th>Ukuran</th>
                     <th>Tanggal Unggah</th>
                     <th style="text-align: right;">Aksi</th>
@@ -74,24 +125,49 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                                 {% endif %}
                             </div>
-                            <div>
-                                <a href="/api/files/download/{{ file.id }}" class="file-title-link" title="Unduh {{ file.original_filename }}">
-                                    {{ file.original_filename }}
-                                </a>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <a href="/api/files/download/{{ file.id }}" class="file-title-link" title="Unduh {{ file.original_filename }}">
+                                        {{ file.original_filename }}
+                                    </a>
+                                    {% if category.slug == 'cisco' and file.extension in ['.pkt', '.pka'] %}
+                                    <span class="topology-badge" title="Topologi Cisco Packet Tracer">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                                        Topologi Lab
+                                    </span>
+                                    {% endif %}
+                                </div>
                                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">{{ file.extension|upper }}</div>
+                                
+                                <!-- Multi-Tag Chips Row -->
+                                <div class="file-tags-row" data-file-id="{{ file.id }}">
+                                    {% for tag in file.tags %}
+                                    <span class="tag-chip" style="background: {{ tag.tag_color }}22; border-color: {{ tag.tag_color }}55; color: {{ tag.tag_color }};">
+                                        # {{ tag.tag_name }}
+                                        <span class="tag-chip-remove" data-tag-id="{{ tag.id }}" data-file-id="{{ file.id }}" title="Hapus tag">✕</span>
+                                    </span>
+                                    {% endfor %}
+                                    <button type="button" class="add-tag-btn" data-file-id="{{ file.id }}">+ Tag</button>
+                                </div>
                             </div>
                         </div>
                     </td>
                     <td style="color: var(--text-secondary); font-size: 12px;">{{ file.size_formatted }}</td>
                     <td style="color: var(--text-secondary); font-size: 12px;">{{ file.created_at_wib }}</td>
                     <td style="text-align: right;">
-                        <div style="display: inline-flex; align-items: center; gap: 8px;">
-                            <a href="/api/files/download/{{ file.id }}" class="btn btn-secondary btn-sm" title="Unduh Berkas">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap;">
+                            <!-- Tombol View Langsung (Tanpa Perlu Unduh ke Lokal) -->
+                            <button type="button" class="btn btn-secondary btn-sm btn-view-file" data-id="{{ file.id }}" data-filename="{{ file.original_filename }}" data-ext="{{ file.extension }}" title="Lihat Isi Berkas Langsung Tanpa Unduh">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <span>View</span>
+                            </button>
+
+                            <a href="/api/files/download/{{ file.id }}" class="btn btn-secondary btn-sm" title="Unduh Berkas ke Lokal">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                 <span>Unduh</span>
                             </a>
                             <button type="button" class="btn btn-danger btn-sm btn-delete-file" data-id="{{ file.id }}" data-category="{{ category.slug }}" data-filename="{{ file.original_filename }}" title="Hapus Berkas">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                 <span>Hapus</span>
                             </button>
                         </div>

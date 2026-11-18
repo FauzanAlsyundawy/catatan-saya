@@ -5,11 +5,14 @@
 # Data and Storage
 data/
 uploads/
+backups/*.zip
+backups/*.tar.gz
 *.db
 *.sqlite3
 # Pertahankan placeholder folder
 !data/.gitkeep
 !uploads/.gitkeep
+!backups/.gitkeep
 
 # Python cache & virtual environment
 __pycache__/

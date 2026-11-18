@@ -609,8 +609,8 @@ button, input, select, textarea {
 
 .bento-card:hover {
     transform: translateY(-2px);
-    border-color: var(--border-strong);
-    box-shadow: var(--shadow-md);
+    border-color: rgba(225, 29, 72, 0.4);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 0 16px rgba(225, 29, 72, 0.12);
 }
 
 .bento-card:hover::before {
@@ -665,8 +665,8 @@ button, input, select, textarea {
 }
 
 .bento-card:hover .bento-arrow-icon {
-    transform: translateX(3px);
-    color: var(--text-primary);
+    transform: translateX(4px);
+    color: #ffffff;
 }
 
 .bento-title {
@@ -1179,5 +1179,643 @@ button, input, select, textarea {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
+    }
+}
+
+
+/* ==========================================================================
+   V2.0 ENTERPRISE UPGRADE ENHANCEMENTS
+   ========================================================================== */
+
+/* 1. Global Search Bar & Dropdown */
+.global-search-wrapper {
+    position: relative;
+}
+
+.global-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+    height: 38px;
+    width: 280px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), width var(--transition-base);
+    cursor: text;
+}
+
+.global-search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+    width: 340px;
+}
+
+.global-search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    flex: 1;
+    min-width: 0;
+}
+
+.global-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-kbd {
+    font-size: 10px;
+    color: var(--text-muted);
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 2px 5px;
+    white-space: nowrap;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    display: none;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.search-dropdown.active {
+    display: block;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: background-color var(--transition-fast);
+}
+
+.search-result-item:hover {
+    background-color: var(--bg-surface-hover);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-cat {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-left: auto;
+    background: var(--bg-surface-elevated);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.search-no-result {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* 2. Top Bar Upload Button & User Profile Dropdown */
+.btn-upload-new {
+    height: 38px;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+}
+
+.user-profile-dropdown {
+    position: relative;
+}
+
+.user-profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.user-profile-trigger:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 210px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: all var(--transition-fast);
+}
+
+.user-dropdown-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    padding: 12px 14px;
+}
+
+.dropdown-username {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.dropdown-role {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-subtle);
+    margin: 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+    text-decoration: none;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.dropdown-item.dropdown-item-danger {
+    color: #fca5a5;
+}
+
+.dropdown-item.dropdown-item-danger:hover {
+    background-color: var(--status-danger-bg);
+}
+
+/* 4. Sidebar Storage Widget */
+.sidebar-storage-widget {
+    margin-top: auto;
+    padding: 12px 14px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.storage-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.storage-progress-track {
+    height: 5px;
+    background-color: var(--bg-canvas);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.storage-progress-bar {
+    height: 100%;
+    background-color: var(--accent);
+    border-radius: var(--radius-full);
+    transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.storage-cap-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* 5. Recent Files / Quick Access */
+.quick-access-section {
+    margin-top: 36px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.recent-files-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.recent-file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.recent-file-item:hover {
+    background-color: var(--bg-surface-hover);
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.recent-file-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-text);
+    flex-shrink: 0;
+}
+
+.recent-file-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.recent-file-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-file-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-file-category-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+/* 6. Quick Scratchpad (Floating Action Button & Panel) */
+.scratchpad-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-full);
+    background-color: var(--accent);
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(225, 29, 72, 0.45);
+    z-index: 55;
+    transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.scratchpad-fab:hover {
+    background-color: var(--accent-hover);
+    transform: scale(1.08);
+}
+
+.scratchpad-panel {
+    position: fixed;
+    bottom: 92px;
+    right: 28px;
+    width: 380px;
+    max-height: 440px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 54;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.scratchpad-panel.open {
+    display: flex;
+}
+
+.scratchpad-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background-color: var(--bg-surface-elevated);
+}
+
+.scratchpad-textarea {
+    flex: 1;
+    background: var(--bg-canvas);
+    border: none;
+    outline: none;
+    padding: 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    resize: none;
+    min-height: 280px;
+    line-height: 1.6;
+}
+
+.scratchpad-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* 7. File Tagging Chips & Popup */
+.file-tags-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.tag-chip-remove {
+    opacity: 0.6;
+    font-size: 10px;
+    cursor: pointer;
+    margin-left: 2px;
+}
+
+.tag-chip-remove:hover {
+    opacity: 1;
+}
+
+.add-tag-btn {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.add-tag-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.tag-input-popup {
+    position: absolute;
+    background-color: var(--bg-surface-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 80;
+    min-width: 220px;
+    display: none;
+}
+
+.tag-input-popup.open {
+    display: block;
+}
+
+/* 8. Vault PIN Lock Screen */
+.vault-locked-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(12, 14, 20, 0.94);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 35;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+}
+
+.vault-pin-display {
+    display: flex;
+    gap: 12px;
+}
+
+.pin-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border-strong);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pin-dot.filled {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.vault-pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 58px);
+    gap: 8px;
+}
+
+.pin-key {
+    width: 58px;
+    height: 58px;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.pin-key:hover {
+    background-color: var(--bg-surface-hover);
+    border-color: var(--accent);
+}
+
+.pin-key:active {
+    background-color: var(--accent-subtle);
+    transform: scale(0.96);
+}
+
+/* 9. Cisco Topology Badge */
+.topology-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 600;
+    background: #0c4a6e;
+    border: 1px solid #0284c7;
+    color: #f0f9ff;
+}
+
+/* 10. Smart AI Summary Side Panel */
+.ai-summary-panel {
+    position: fixed;
+    top: 64px;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    background-color: var(--bg-surface);
+    border-left: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-lg);
+    z-index: 45;
+    transform: translateX(100%);
+    transition: transform var(--transition-base);
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-summary-panel.open {
+    transform: translateX(0);
+}
+
+.ai-summary-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ai-summary-body {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .global-search-bar {
+        width: 180px;
+    }
+    .global-search-bar:focus-within {
+        width: 220px;
+    }
+    .search-kbd {
+        display: none;
+    }
+    .scratchpad-panel {
+        width: calc(100vw - 32px);
+        right: 16px;
+        bottom: 86px;
+    }
+    .ai-summary-panel {
+        width: 100vw;
     }
 }
