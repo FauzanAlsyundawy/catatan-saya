@@ -154,7 +154,7 @@ async def test_full_auth_and_file_lifecycle():
 
         dash_res = await client.get("/")
         assert dash_res.status_code == 200
-        assert "Catatan Saya" in dash_res.text
+        assert "E-BOOK" in dash_res.text
         assert "Word" in dash_res.text
         assert "Notepad++" in dash_res.text
 
