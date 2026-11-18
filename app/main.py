@@ -97,7 +97,9 @@ async def security_headers_middleware(request: Request, call_next):
     )
 
     path = request.url.path
-    if not path.startswith(("/static", "/assets", "/favicon.ico")):
+    if path.startswith(("/static", "/assets", "/favicon.ico")):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    else:
         response.headers["Cache-Control"] = (
             "no-store, no-cache, must-revalidate, max-age=0"
         )

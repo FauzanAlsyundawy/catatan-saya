@@ -9,8 +9,14 @@
     <!-- Favicon: Using user's assets/logo.png as requested -->
     <link rel="icon" type="image/png" href="/assets/logo.png">
     
-    <!-- Local Pure Vanilla CSS (No External CDN) -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Local Pure Vanilla CSS (Cache Busted) -->
+    <link rel="stylesheet" href="/static/css/style.css?v=20261119b">
+    <style>
+        /* Fallback guards to prevent FOUC */
+        .user-dropdown-menu { display: none; }
+        .user-dropdown-menu.open { display: block !important; }
+        .global-search-input { background: transparent !important; color: #f8fafc !important; }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -145,7 +151,7 @@
                     </button>
                     <!-- User Profile Dropdown -->
                     <div class="user-profile-dropdown" id="user-profile-dropdown">
-                        <button class="user-profile-trigger" id="user-profile-btn">
+                        <button type="button" class="user-profile-trigger" id="user-profile-btn">
                             <div class="user-avatar">{{ (current_user.username[:2])|upper if current_user else 'AD' }}</div>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
@@ -211,8 +217,8 @@
         <textarea id="scratchpad-textarea" class="scratchpad-textarea" placeholder="Tulis snippet kode, perintah CLI, atau catatan cepat di sini... Tersimpan otomatis secara lokal."></textarea>
     </div>
 
-    <!-- Client Scripts -->
-    <script src="/static/js/app.js"></script>
+    <!-- Client Scripts (Cache Busted) -->
+    <script src="/static/js/app.js?v=20261119b"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
