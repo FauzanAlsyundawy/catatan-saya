@@ -102,6 +102,10 @@ async def test_security_headers():
         assert response.headers["X-Frame-Options"] == "DENY"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert "Content-Security-Policy" in response.headers
+        assert (
+            "frame-ancestors 'none'"
+            in response.headers["Content-Security-Policy"]
+        )
         assert "Cache-Control" in response.headers
 
 
@@ -465,6 +469,11 @@ async def test_search_and_tag_endpoints():
         view_res = await client.get(f"/api/files/view/{file_id}")
         assert view_res.status_code == 200
         assert "inline" in view_res.headers["content-disposition"]
+        assert view_res.headers["X-Frame-Options"] == "SAMEORIGIN"
+        assert (
+            "frame-ancestors 'self'"
+            in view_res.headers["Content-Security-Policy"]
+        )
         assert view_res.content == doc_content
 
         # 9. Delete tag
